@@ -10,6 +10,7 @@ import { UserPlus } from 'lucide-react';
 
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -53,6 +54,7 @@ const Signup: React.FC = () => {
           userAttributes: {
             email,
             phone_number: e164,
+            name: fullName.trim(),
           },
         },
       });
@@ -136,6 +138,18 @@ const Signup: React.FC = () => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     required
                   />
                 </div>
