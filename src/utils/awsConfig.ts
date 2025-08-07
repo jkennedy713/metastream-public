@@ -29,6 +29,7 @@ export const getAWSConfig = () => {
     Amplify.configure({
       Auth: {
         Cognito: {
+          region: configCache.region,
           userPoolId: configCache.userPoolId,
           userPoolClientId: configCache.userPoolClientId,
           identityPoolId: configCache.identityPoolId,

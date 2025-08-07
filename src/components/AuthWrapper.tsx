@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     checkAuthState();
     const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      console.log('[Auth] Hub event:', payload.event);
       if (payload.event === 'signedIn' || payload.event === 'tokenRefresh') {
         checkAuthState();
       }
@@ -43,8 +44,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthState = async () => {
     try {
       const currentUser = await getCurrentUser();
+      console.log('[Auth] current user', currentUser);
       setUser(currentUser);
     } catch (error) {
+      console.warn('[Auth] no current user', error);
       // Preserve existing user on transient errors
       setUser((prev) => prev ?? null);
     } finally {
