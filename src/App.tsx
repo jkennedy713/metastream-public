@@ -11,7 +11,9 @@ import Upload from "./pages/Upload";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+import { getAWSConfig } from "./utils/awsConfig";
 
+getAWSConfig();
 
 const queryClient = new QueryClient();
 
