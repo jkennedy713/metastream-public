@@ -18,8 +18,7 @@ const Home: React.FC = () => {
             <span className="text-gradient-primary">Metastream</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            An AI-powered platform that extracts key phrases, entities, and insights with
-            Amazon Comprehend—turning nutritional datasets into searchable, actionable knowledge.
+            An AI-powered platform that extracts key phrases, entities, and insights - turning nutritional datasets into searchable, actionable knowledge.
           </p>
           
           {user ? (
@@ -107,6 +106,30 @@ const Home: React.FC = () => {
         </div>
       </div>
 
+      {/* Getting Started Section */}
+      <div className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-surface rounded-2xl shadow-elegant">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-8 text-gradient-primary">Ready to Get Started?</h2>
+          
+          {!user && (
+            <>
+              <div className="flex items-center justify-center gap-4">
+                <Button asChild size="lg" variant="gradient">
+                  <Link to="/signup">Create Your Account</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link to="/signup">Join Us</Link>
+                </Button>
+              </div>
+              <div className="mt-4">
+                <Button asChild size="lg" variant="gradient">
+                  <Link to="/signup">Sign Up Now</Link>
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
