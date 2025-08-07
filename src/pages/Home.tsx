@@ -11,11 +11,11 @@ const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative py-20 px-4 sm:px-6 lg:px-8">
+      <div className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-surface rounded-2xl shadow-elegant">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
             <span className="text-foreground">Welcome to </span>
-            <span className="text-primary">Metastream</span>
+            <span className="text-gradient-primary">Metastream</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             A production-grade platform for researchers to upload and analyze metadata 
@@ -24,7 +24,7 @@ const Home: React.FC = () => {
           
           {user ? (
             <div className="space-x-4">
-              <Button asChild size="lg">
+              <Button asChild size="lg" variant="gradient">
                 <Link to="/upload">Upload Dataset</Link>
               </Button>
               <Button asChild variant="outline" size="lg">
@@ -33,7 +33,7 @@ const Home: React.FC = () => {
             </div>
           ) : (
             <div className="space-x-4">
-              <Button asChild size="lg">
+              <Button asChild size="lg" variant="gradient">
                 <Link to="/signup">Get Started</Link>
               </Button>
               <Button asChild variant="outline" size="lg">

@@ -16,7 +16,7 @@ const Dashboard: React.FC = () => {
                 View and analyze metadata from your uploaded datasets
               </p>
             </div>
-            <Button asChild>
+            <Button asChild variant="gradient">
               <Link to="/upload" className="flex items-center space-x-2">
                 <Upload className="w-4 h-4" />
                 <span>Upload New File</span>

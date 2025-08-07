@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Metastream Theme - Vibrant Dark Palette */
+    /* Metastream Theme - Vibrant Dark Palette (Enhanced) */
     --background: 222 47% 7%;      /* Deep Night */
     --foreground: 210 40% 98%;     /* Near White */
 
@@ -22,10 +22,10 @@ All colors MUST be HSL.
     --primary-foreground: 210 40% 98%;
 
     --secondary: 190 70% 42%;      /* Azure Teal */
-    --secondary-foreground: 222 47% 7%;
+    --secondary-foreground: 210 40% 98%;
 
     --muted: 222 15% 18%;          /* Subtle Surface */
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 210 16% 82%;
 
     --accent: 34 96% 64%;          /* Warm Apricot */
     --accent-foreground: 222 47% 7%;
@@ -47,10 +47,16 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 220 15% 24%;
     --sidebar-ring: 262 83% 58%;
+
+    /* Gradients & Shadows */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-surface: linear-gradient(180deg, hsl(var(--background)), hsl(var(--card)));
+    --shadow-elegant: 0 18px 40px -12px hsl(var(--primary) / 0.35);
   }
 
   .dark {
-    /* Metastream Theme - Vibrant Dark Palette (Default) */
+    /* Metastream Theme - Vibrant Dark Palette (Enhanced Default) */
     --background: 222 47% 7%;
     --foreground: 210 40% 98%;
 
@@ -64,10 +70,10 @@ All colors MUST be HSL.
     --primary-foreground: 210 40% 98%;
 
     --secondary: 190 70% 42%;
-    --secondary-foreground: 222 47% 7%;
+    --secondary-foreground: 210 40% 98%;
 
     --muted: 222 15% 18%;
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 210 16% 82%;
 
     --accent: 34 96% 64%;
     --accent-foreground: 222 47% 7%;
@@ -87,6 +93,12 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 220 15% 24%;
     --sidebar-ring: 262 83% 58%;
+
+    /* Gradients & Shadows */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-surface: linear-gradient(180deg, hsl(var(--background)), hsl(var(--card)));
+    --shadow-elegant: 0 18px 40px -12px hsl(var(--primary) / 0.35);
   }
 }
 
@@ -103,4 +115,17 @@ All colors MUST be HSL.
   html {
     @apply dark; /* Default to dark mode */
   }
+}
+
+@layer components {
+  .bg-gradient-primary { background-image: var(--gradient-primary); }
+  .bg-gradient-accent { background-image: var(--gradient-accent); }
+  .bg-gradient-surface { background-image: var(--gradient-surface); }
+  .text-gradient-primary {
+    background-image: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-elegant { box-shadow: var(--shadow-elegant); }
 }
