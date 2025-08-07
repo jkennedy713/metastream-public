@@ -37,12 +37,16 @@ const Signup: React.FC = () => {
     try {
       // Ensure AWS is configured before attempting auth
       getAWSConfig();
+      const secretHash = calculateSecretHash(email);
       await signUp({
         username: email,
         password,
         options: {
           userAttributes: {
             email,
+          },
+          clientMetadata: {
+            SECRET_HASH: secretHash,
           },
         },
       });
@@ -70,9 +74,15 @@ const Signup: React.FC = () => {
     try {
       // Ensure AWS is configured before attempting auth
       getAWSConfig();
+      const secretHash = calculateSecretHash(email);
       await confirmSignUp({
         username: email,
         confirmationCode,
+        options: {
+          clientMetadata: {
+            SECRET_HASH: secretHash,
+          },
+        },
       });
       
       toast({
