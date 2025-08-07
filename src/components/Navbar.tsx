@@ -5,7 +5,7 @@ import { useAuth } from './AuthWrapper';
 import { LogOut, Upload, BarChart3 } from 'lucide-react';
 
 const Navbar: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, profileName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const handleSignOut = async () => {
@@ -57,7 +57,7 @@ const Navbar: React.FC = () => {
             {user ? (
               <>
                 <span className="text-sm text-muted-foreground hidden sm:block">
-                  {user.username}
+                  {profileName ?? user.username}
                 </span>
                 <Button
                   onClick={handleSignOut}

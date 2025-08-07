@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getCurrentUser, AuthUser, fetchAuthSession } from 'aws-amplify/auth';
+import { getCurrentUser, AuthUser, fetchAuthSession, fetchUserAttributes } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { Navigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  profileName: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -26,6 +27,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileName, setProfileName] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthState();
@@ -51,10 +53,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const currentUser = await getCurrentUser();
       console.log('[Auth] current user', currentUser);
       setUser(currentUser);
+      try {
+        const attrs = await fetchUserAttributes();
+        const composed =
+          (attrs.name && attrs.name.trim()) ||
+          ([attrs.given_name, attrs.family_name].filter(Boolean).join(' ').trim()) ||
+          attrs.email ||
+          currentUser.username;
+        setProfileName(composed || null);
+      } catch (e) {
+        console.warn('[Auth] fetchUserAttributes failed', e);
+        setProfileName(null);
+      }
     } catch (error) {
       console.warn('[Auth] no current user', error);
       // Preserve existing user on transient errors
       setUser((prev) => prev ?? null);
+      setProfileName(null);
     } finally {
       setLoading(false);
     }
@@ -65,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { signOut } = await import('aws-amplify/auth');
       await signOut();
       setUser(null);
+      setProfileName(null);
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -73,6 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = {
     user,
     loading,
+    profileName,
     signOut,
   };
 
