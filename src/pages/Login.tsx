@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { signIn } from 'aws-amplify/auth';
 import { LogIn } from 'lucide-react';
+import { getAWSConfig } from '@/utils/awsConfig';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,6 +21,8 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
+      // Ensure AWS is configured before attempting auth
+      getAWSConfig();
       await signIn({
         username: email,
         password,
