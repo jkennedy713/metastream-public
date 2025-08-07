@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getCurrentUser, AuthUser } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -27,6 +28,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     checkAuthState();
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      if (payload.event === 'signedIn' || payload.event === 'tokenRefresh') {
+        checkAuthState();
+      }
+      if (payload.event === 'signedOut') {
+        setUser(null);
+      }
+    });
+    return unsubscribe;
   }, []);
 
   const checkAuthState = async () => {
