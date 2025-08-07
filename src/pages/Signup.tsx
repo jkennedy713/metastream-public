@@ -44,9 +44,6 @@ const Signup: React.FC = () => {
           userAttributes: {
             email,
           },
-          clientMetadata: {
-            secretHash: calculateSecretHash(email),
-          },
         },
       });
       
@@ -76,11 +73,6 @@ const Signup: React.FC = () => {
       await confirmSignUp({
         username: email,
         confirmationCode,
-        options: {
-          clientMetadata: {
-            secretHash: calculateSecretHash(email),
-          },
-        },
       });
       
       toast({

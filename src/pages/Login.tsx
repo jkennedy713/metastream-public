@@ -27,11 +27,6 @@ const Login: React.FC = () => {
       await signIn({
         username: email,
         password,
-        options: {
-          clientMetadata: {
-            secretHash: calculateSecretHash(email),
-          },
-        },
       });
       
       toast({
