@@ -44,9 +44,10 @@ const MetadataTable: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadData({}, true);
-  }, []);
+  // Auto-load disabled to avoid preview fetch crash; use Search/Refresh to load manually
+  // useEffect(() => {
+  //   loadData({}, true);
+  // }, []);
 
   const handleSearch = () => {
     const filters: QueryFilters = {};
