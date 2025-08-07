@@ -72,8 +72,8 @@ const Home: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Amazon Comprehend powered key phrase, entity, and sentiment extraction
-                  generates smart tags, summaries, and rich filters for instant discovery.
+                  With Amazon Comprehend, extract key phrases and entities to power
+                  smart tags and fast discovery.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -113,14 +113,21 @@ const Home: React.FC = () => {
           <h2 className="text-3xl font-bold mb-8 text-gradient-primary">Ready to Get Started?</h2>
           
           {!user && (
-            <div className="flex items-center justify-center gap-4">
-              <Button asChild size="lg" variant="gradient">
-                <Link to="/signup">Create Your Account</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/signup">Join Us</Link>
-              </Button>
-            </div>
+            <>
+              <div className="flex items-center justify-center gap-4">
+                <Button asChild size="lg" variant="gradient">
+                  <Link to="/signup">Create Your Account</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link to="/signup">Join Us</Link>
+                </Button>
+              </div>
+              <div className="mt-4">
+                <Button asChild size="lg" variant="gradient">
+                  <Link to="/signup">Sign Up Now</Link>
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </div>
