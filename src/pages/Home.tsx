@@ -18,8 +18,8 @@ const Home: React.FC = () => {
             <span className="text-gradient-primary">Metastream</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            A production-grade platform for researchers to upload and analyze metadata 
-            from nutritional science datasets, powered by AWS infrastructure.
+            An AI-powered platform that extracts key phrases, entities, and insights with
+            Amazon Comprehend—turning nutritional datasets into searchable, actionable knowledge.
           </p>
           
           {user ? (
@@ -47,7 +47,7 @@ const Home: React.FC = () => {
       {/* Features Section */}
       <div className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-3xl font-bold text-center mb-12 text-gradient-primary">
             Powerful Features for Research Teams
           </h2>
           
@@ -68,12 +68,12 @@ const Home: React.FC = () => {
             <Card>
               <CardHeader>
                 <BarChart3 className="w-8 h-8 text-secondary mb-2" />
-                <CardTitle className="text-lg">Metadata Analysis</CardTitle>
+                <CardTitle className="text-lg">AI-Powered Insights</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Automated metadata extraction and analysis with searchable 
-                  dashboard and filtering capabilities.
+                  Amazon Comprehend powered key phrase, entity, and sentiment extraction
+                  generates smart tags, summaries, and rich filters for instant discovery.
                 </CardDescription>
               </CardContent>
             </Card>
