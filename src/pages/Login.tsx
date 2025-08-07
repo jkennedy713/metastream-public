@@ -19,22 +19,39 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      await signIn({
+    const attempt = async (flow: 'USER_PASSWORD_AUTH' | 'USER_SRP_AUTH') =>
+      signIn({
         username: email,
         password,
+        options: { authFlowType: flow as any },
       });
-      
+
+    try {
+      let success = false;
+      let lastError: any = null;
+      for (const flow of ['USER_PASSWORD_AUTH', 'USER_SRP_AUTH'] as const) {
+        try {
+          await attempt(flow);
+          success = true;
+          break;
+        } catch (err: any) {
+          lastError = err;
+        }
+      }
+
+      if (!success) throw lastError;
+
       toast({
         title: 'Welcome back!',
         description: 'You have been successfully signed in.',
       });
-      
+
       navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: 'Sign In Failed',
-        description: error.message || 'Please check your credentials and try again.',
+        description:
+          error?.message || 'Please check your credentials and try again.',
         variant: 'destructive',
       });
     } finally {
