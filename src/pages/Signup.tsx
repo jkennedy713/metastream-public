@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { signUp, confirmSignUp } from 'aws-amplify/auth';
 import { UserPlus } from 'lucide-react';
-import { getAWSConfig } from '@/utils/awsConfig';
-import { calculateSecretHash } from '@/utils/authHelpers';
 
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -35,17 +33,12 @@ const Signup: React.FC = () => {
     setLoading(true);
 
     try {
-      // Ensure AWS is configured before attempting auth
-      getAWSConfig();
       await signUp({
         username: email,
         password,
         options: {
           userAttributes: {
             email,
-          },
-          clientMetadata: {
-            secretHash: calculateSecretHash(email),
           },
         },
       });
@@ -71,16 +64,9 @@ const Signup: React.FC = () => {
     setLoading(true);
 
     try {
-      // Ensure AWS is configured before attempting auth
-      getAWSConfig();
       await confirmSignUp({
         username: email,
         confirmationCode,
-        options: {
-          clientMetadata: {
-            secretHash: calculateSecretHash(email),
-          },
-        },
       });
       
       toast({
