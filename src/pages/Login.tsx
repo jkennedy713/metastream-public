@@ -19,27 +19,51 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    const attempt = async (flow: 'USER_PASSWORD_AUTH' | 'USER_SRP_AUTH') =>
-      signIn({
+    const attempt = async (
+      flow: 'USER_PASSWORD_AUTH' | 'USER_SRP_AUTH'
+    ) => {
+      const res = await signIn({
         username: email,
         password,
         options: { authFlowType: flow as any },
       });
+      console.log('[Auth] signIn result', res);
+      return res as unknown as { isSignedIn?: boolean; nextStep?: { signInStep?: string } };
+    };
 
     try {
-      let success = false;
+      let signedIn = false;
+      let result: { isSignedIn?: boolean; nextStep?: { signInStep?: string } } | null = null;
       let lastError: any = null;
+
       for (const flow of ['USER_PASSWORD_AUTH', 'USER_SRP_AUTH'] as const) {
         try {
-          await attempt(flow);
-          success = true;
-          break;
+          result = await attempt(flow);
+          if (result?.isSignedIn) {
+            signedIn = true;
+            break;
+          }
         } catch (err: any) {
           lastError = err;
         }
       }
 
-      if (!success) throw lastError;
+      if (!signedIn) {
+        // Handle common next steps (unconfirmed, MFA, etc.)
+        const step = result?.nextStep?.signInStep;
+        if (step === 'CONFIRM_SIGN_UP') {
+          toast({
+            title: 'Confirm your account',
+            description: 'Please enter the confirmation code sent to your email.',
+          });
+          return navigate('/signup');
+        }
+        if (step && step !== 'DONE') {
+          throw new Error(`Additional verification required: ${step}`);
+        }
+        // If no structured next step, throw the last error
+        throw lastError || new Error('Unable to sign in.');
+      }
 
       toast({
         title: 'Welcome back!',
