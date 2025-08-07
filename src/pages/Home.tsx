@@ -110,13 +110,11 @@ const Home: React.FC = () => {
       <div className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-surface rounded-2xl shadow-elegant">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-8 text-gradient-primary">Ready to Get Started?</h2>
-          {!user && (
-            <div className="flex items-center justify-center">
-              <Button asChild size="lg" variant="gradient">
-                <Link to="/signup">Create Your Account</Link>
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center justify-center">
+            <Button asChild size="lg" variant="gradient">
+              <Link to="/signup">Create Your Account</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
