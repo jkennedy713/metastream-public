@@ -111,9 +111,6 @@ const Home: React.FC = () => {
       <div className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/50">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-8">Ready to Get Started?</h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join researchers worldwide who trust Metastream for their data analysis needs.
-          </p>
           
           {!user && (
             <Button asChild size="lg">

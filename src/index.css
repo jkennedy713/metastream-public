@@ -8,85 +8,85 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* AWS Theme Colors - Light Mode (fallback) */
-    --background: 0 0% 100%;
-    --foreground: 210 11% 15%;
+    /* Metastream Theme - Constrained Palette */
+    --background: 212 28% 10%; /* Eerie Black */
+    --foreground: 34 99% 70%;  /* Mellow Apricot */
 
-    --card: 0 0% 100%;
-    --card-foreground: 210 11% 15%;
+    --card: 213 28% 19%;       /* Gunmetal */
+    --card-foreground: 34 99% 70%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 11% 15%;
+    --popover: 213 28% 19%;
+    --popover-foreground: 34 99% 70%;
 
-    --primary: 210 11% 15%; /* AWS Navy */
-    --primary-foreground: 0 0% 100%;
+    --primary: 34 99% 70%;     /* Mellow Apricot */
+    --primary-foreground: 212 28% 10%; /* Eerie Black */
 
-    --secondary: 35 100% 50%; /* AWS Orange */
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 213 24% 28%;  /* Charcoal */
+    --secondary-foreground: 34 99% 70%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 213 28% 19%;      /* Gunmetal */
+    --muted-foreground: 34 99% 70%;
 
-    --accent: 35 100% 50%; /* AWS Orange */
-    --accent-foreground: 0 0% 0%;
+    --accent: 34 99% 70%;      /* Mellow Apricot */
+    --accent-foreground: 212 28% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 213 24% 28%; /* Charcoal (constrained palette) */
+    --destructive-foreground: 34 99% 70%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 210 11% 15%;
+    --border: 213 24% 28%;     /* Charcoal */
+    --input: 213 24% 28%;
+    --ring: 34 99% 70%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 213 28% 19%;    /* Gunmetal */
+    --sidebar-foreground: 34 99% 70%;
+    --sidebar-primary: 34 99% 70%;
+    --sidebar-primary-foreground: 212 28% 10%;
+    --sidebar-accent: 213 24% 28%;        /* Charcoal */
+    --sidebar-accent-foreground: 34 99% 70%;
+    --sidebar-border: 213 24% 28%;
+    --sidebar-ring: 34 99% 70%;
   }
 
   .dark {
-    /* AWS Theme Colors - Dark Mode (default) */
-    --background: 0 0% 0%; /* Solid Black */
-    --foreground: 0 0% 100%;
+    /* Metastream Theme - Constrained Palette (Dark Default) */
+    --background: 212 28% 10%; /* Eerie Black */
+    --foreground: 34 99% 70%;  /* Mellow Apricot */
 
-    --card: 210 11% 8%;
-    --card-foreground: 0 0% 100%;
+    --card: 213 28% 19%;       /* Gunmetal */
+    --card-foreground: 34 99% 70%;
 
-    --popover: 210 11% 8%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 213 28% 19%;
+    --popover-foreground: 34 99% 70%;
 
-    --primary: 210 11% 15%; /* AWS Navy */
-    --primary-foreground: 0 0% 100%;
+    --primary: 34 99% 70%;     /* Mellow Apricot */
+    --primary-foreground: 212 28% 10%; /* Eerie Black */
 
-    --secondary: 35 100% 50%; /* AWS Orange */
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 213 24% 28%;  /* Charcoal */
+    --secondary-foreground: 34 99% 70%;
 
-    --muted: 210 11% 12%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 213 28% 19%;      /* Gunmetal */
+    --muted-foreground: 34 99% 70%;
 
-    --accent: 35 100% 50%; /* AWS Orange */
-    --accent-foreground: 0 0% 0%;
+    --accent: 34 99% 70%;      /* Mellow Apricot */
+    --accent-foreground: 212 28% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 213 24% 28%; /* Charcoal */
+    --destructive-foreground: 34 99% 70%;
 
-    --border: 210 11% 20%;
-    --input: 210 11% 15%;
-    --ring: 35 100% 50%;
+    --border: 213 24% 28%;     /* Charcoal */
+    --input: 213 24% 28%;
+    --ring: 34 99% 70%;
     
-    --sidebar-background: 210 11% 8%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 210 11% 15%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 11% 12%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 210 11% 20%;
-    --sidebar-ring: 35 100% 50%;
+    --sidebar-background: 213 28% 19%;
+    --sidebar-foreground: 34 99% 70%;
+    --sidebar-primary: 34 99% 70%;
+    --sidebar-primary-foreground: 212 28% 10%;
+    --sidebar-accent: 213 24% 28%;
+    --sidebar-accent-foreground: 34 99% 70%;
+    --sidebar-border: 213 24% 28%;
+    --sidebar-ring: 34 99% 70%;
   }
 }
 
