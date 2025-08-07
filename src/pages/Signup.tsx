@@ -10,6 +10,7 @@ import { UserPlus } from 'lucide-react';
 
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmationCode, setConfirmationCode] = useState('');
@@ -20,11 +21,23 @@ const Signup: React.FC = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast({
         title: 'Password Mismatch',
         description: 'Passwords do not match. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate E.164 phone number format required by Cognito (e.g., +15551234567)
+    const e164 = phone.trim();
+    const phoneValid = /^\+[1-9]\d{1,14}$/.test(e164);
+    if (!phoneValid) {
+      toast({
+        title: 'Invalid phone number',
+        description: 'Use E.164 format, e.g., +15551234567.',
         variant: 'destructive',
       });
       return;
@@ -39,14 +52,15 @@ const Signup: React.FC = () => {
         options: {
           userAttributes: {
             email,
+            phone_number: e164,
           },
         },
       });
-      
+
       setStep('confirm');
       toast({
         title: 'Account Created',
-        description: 'Please check your email for a confirmation code.',
+        description: 'Please check your email or SMS for a confirmation code.',
       });
     } catch (error: any) {
       toast({
@@ -122,6 +136,18 @@ const Signup: React.FC = () => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+15551234567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     required
                   />
                 </div>
