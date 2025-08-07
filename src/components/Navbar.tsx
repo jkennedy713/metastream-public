@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from './AuthWrapper';
 import { LogOut, Upload, BarChart3 } from 'lucide-react';
@@ -7,6 +7,11 @@ import { LogOut, Upload, BarChart3 } from 'lucide-react';
 const Navbar: React.FC = () => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <nav className="border-b border-border bg-card">
@@ -55,7 +60,7 @@ const Navbar: React.FC = () => {
                   {user.username}
                 </span>
                 <Button
-                  onClick={signOut}
+                  onClick={handleSignOut}
                   variant="outline"
                   size="sm"
                   className="flex items-center space-x-1"
