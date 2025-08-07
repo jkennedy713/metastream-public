@@ -1,6 +1,6 @@
 import { DynamoDBClient, ScanCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
-import { awsConfig } from './awsConfig';
+import { getAWSConfig } from './awsConfig';
 
 export interface MetadataRecord {
   id: string;
@@ -27,6 +27,7 @@ export const queryMetadata = async (
   hasMore: boolean;
 }> => {
   try {
+    const awsConfig = getAWSConfig();
     // Get AWS credentials from Amplify session
     const session = await fetchAuthSession();
     const credentials = session.credentials;

@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { fetchAuthSession } from 'aws-amplify/auth';
-import { awsConfig } from './awsConfig';
+import { getAWSConfig } from './awsConfig';
 
 const ALLOWED_FILE_TYPES = ['.csv', '.tsv', '.xlsx', '.txt', '.json'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -31,6 +31,7 @@ export const uploadToS3 = async (
   onProgress?: (progress: UploadProgress) => void
 ): Promise<{ success: boolean; key?: string; error?: string }> => {
   try {
+    const awsConfig = getAWSConfig();
     // Get AWS credentials from Amplify session
     const session = await fetchAuthSession();
     const credentials = session.credentials;
