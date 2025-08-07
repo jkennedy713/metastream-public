@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { signIn, fetchAuthSession } from 'aws-amplify/auth';
+import { signIn, fetchAuthSession, confirmSignIn } from 'aws-amplify/auth';
 import { LogIn } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'login' | 'newPassword'>('login');
+  const [newPassword, setNewPassword] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -50,16 +52,24 @@ const Login: React.FC = () => {
 
       if (!signedIn) {
         // Handle common next steps (unconfirmed, MFA, etc.)
-        const step = result?.nextStep?.signInStep;
-        if (step === 'CONFIRM_SIGN_UP') {
+        const stepKey = result?.nextStep?.signInStep;
+        if (stepKey === 'CONFIRM_SIGN_UP') {
           toast({
             title: 'Confirm your account',
             description: 'Please enter the confirmation code sent to your email.',
           });
           return navigate('/signup');
         }
-        if (step && step !== 'DONE') {
-          throw new Error(`Additional verification required: ${step}`);
+        if (stepKey === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+          setStep('newPassword');
+          toast({
+            title: 'New password required',
+            description: 'Please set a new password to complete sign-in.',
+          });
+          return;
+        }
+        if (stepKey && stepKey !== 'DONE') {
+          throw new Error(`Additional verification required: ${stepKey}`);
         }
         // If no structured next step, throw the last error
         throw lastError || new Error('Unable to sign in.');
@@ -90,6 +100,21 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleNewPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await confirmSignIn({ challengeResponse: newPassword });
+      await fetchAuthSession({ forceRefresh: true });
+      toast({ title: 'Password updated', description: 'You are now signed in.' });
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({ title: 'Update failed', description: error?.message || 'Try again', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
@@ -113,44 +138,39 @@ const Login: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing In...' : 'Sign In'}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link to="/signup" className="text-primary hover:underline">
-                  Sign up
-                </Link>
-              </p>
-            </div>
+            {step === 'login' ? (
+              <>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input id="password" type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Signing In...' : 'Sign In'}
+                  </Button>
+                </form>
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Don't have an account?{' '}
+                    <Link to="/signup" className="text-primary hover:underline">Sign up</Link>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <form onSubmit={handleNewPasswordSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input id="newPassword" type="password" placeholder="Enter a new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Updating...' : 'Set New Password'}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
