@@ -33,8 +33,21 @@ export const uploadToS3 = async (
   try {
     const awsConfig = getAWSConfig();
     // Get AWS credentials from Amplify session
-    const session = await fetchAuthSession();
-    const credentials = session.credentials;
+    let session = await fetchAuthSession();
+    let credentials = session.credentials;
+
+    console.log('[S3] credentials present?', Boolean(credentials));
+    
+    if (!credentials) {
+      // Force a refresh once (after a fresh sign-in, identity creds may not be materialized yet)
+      try {
+        session = await fetchAuthSession({ forceRefresh: true });
+        credentials = session.credentials;
+        console.log('[S3] credentials after forceRefresh?', Boolean(credentials));
+      } catch (e) {
+        console.warn('[S3] fetchAuthSession forceRefresh failed', e);
+      }
+    }
     
     if (!credentials) {
       throw new Error('Not authenticated');

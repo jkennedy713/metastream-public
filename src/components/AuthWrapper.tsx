@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getCurrentUser, AuthUser } from 'aws-amplify/auth';
+import { getCurrentUser, AuthUser, fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { Navigate } from 'react-router-dom';
 
@@ -29,9 +29,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     checkAuthState();
-    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+    const unsubscribe = Hub.listen('auth', async ({ payload }) => {
       console.log('[Auth] Hub event:', payload.event);
       if (payload.event === 'signedIn' || payload.event === 'tokenRefresh') {
+        try {
+          await fetchAuthSession({ forceRefresh: true });
+        } catch (e) {
+          console.warn('[Auth] fetchAuthSession on event failed', e);
+        }
         checkAuthState();
       }
       if (payload.event === 'signedOut') {

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { signIn } from 'aws-amplify/auth';
+import { signIn, fetchAuthSession } from 'aws-amplify/auth';
 import { LogIn } from 'lucide-react';
 
 const Login: React.FC = () => {
@@ -63,6 +63,13 @@ const Login: React.FC = () => {
         }
         // If no structured next step, throw the last error
         throw lastError || new Error('Unable to sign in.');
+      }
+
+      // Ensure credentials are materialized for S3/Dynamo immediately
+      try {
+        await fetchAuthSession({ forceRefresh: true });
+      } catch (e) {
+        console.warn('[Auth] fetchAuthSession post-signin failed', e);
       }
 
       toast({
