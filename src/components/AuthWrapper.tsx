@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getCurrentUser, AuthUser } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
+import { Navigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -44,7 +45,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
     } catch (error) {
-      setUser(null);
+      // Preserve existing user on transient errors
+      setUser((prev) => prev ?? null);
     } finally {
       setLoading(false);
     }
@@ -88,9 +90,7 @@ export const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
   }
 
   if (!user) {
-    // Redirect to login
-    window.location.href = '/login';
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
