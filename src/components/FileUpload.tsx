@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
 import { extractMetadata } from '@/utils/metadataExtractor';
-import { saveMetadata } from '@/utils/dynamodbClient';
+import { saveMetadataCompat as saveMetadata } from '@/utils/dynamodbCompat';
 import { Upload, File, Check, X } from 'lucide-react';
 
 const FileUpload: React.FC = () => {
