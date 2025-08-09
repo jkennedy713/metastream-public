@@ -6,7 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadataById } from '@/utils/dynamodbQueryById';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteFromS3 } from '@/utils/s3Uploader';
+import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
 
 interface MetadataRecord {
   id: string;
@@ -53,6 +56,7 @@ const RecordDetails: React.FC = () => {
 
   const [record, setRecord] = useState<MetadataRecord | null>(state?.record || null);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     document.title = record?.filename ? `${record.filename} | Record Details` : 'Record Details';
@@ -94,6 +98,23 @@ const RecordDetails: React.FC = () => {
     return [...base, ...meta];
   }, [record]);
 
+  const onDelete = async () => {
+    if (!record) return;
+    setDeleting(true);
+    try {
+      const s3Key = (record.metadata && ((record.metadata as any).s3Key || (record.metadata as any).key)) || record.id;
+      await deleteFromS3(s3Key);
+      await deleteMetadataCompat({ id: record.id, filename: record.filename });
+      toast({ title: 'Deleted', description: 'File and metadata removed.' });
+      navigate('/dashboard');
+    } catch (e: any) {
+      const message = e?.message || (typeof e === 'string' ? e : 'Unknown error');
+      toast({ title: 'Delete failed', description: message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -101,6 +122,27 @@ const RecordDetails: React.FC = () => {
           <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
+          {record && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  <Trash className="w-4 h-4 mr-2" /> {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this file?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the S3 object and its metadata. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete}>Confirm</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <Card>
