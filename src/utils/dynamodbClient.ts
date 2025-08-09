@@ -56,11 +56,15 @@ export const queryMetadata = async (
     const response = await dynamoClient.send(scanCommand);
     
     const items: MetadataRecord[] = (response.Items || []).map(item => ({
-      id: item.id?.S || '',
-      filename: item.filename?.S || '',
-      uploadTime: item.uploadTime?.S || '',
-      metadata: item.metadata ? JSON.parse(item.metadata.S || '{}') : {},
-      userId: item.userId?.S || '',
+      id: item.id?.S || (item as any).Id?.S || '',
+      filename: item.filename?.S || (item as any).FileName?.S || '',
+      uploadTime: item.uploadTime?.S || (item as any).UploadTime?.S || '',
+      metadata: item.metadata
+        ? JSON.parse(item.metadata.S || '{}')
+        : (item as any).Metadata
+        ? JSON.parse((item as any).Metadata.S || '{}')
+        : {},
+      userId: item.userId?.S || (item as any).UserId?.S || '',
     }));
 
     // Apply client-side filtering (in production, this should be done server-side)
@@ -130,6 +134,9 @@ export const saveMetadata = async (record: {
   const cmd = new PutItemCommand({
     TableName: awsConfig.dynamoTableName,
     Item: {
+      // Required partition key for existing table schema
+      FileName: { S: record.filename },
+      // Keep lowercase attributes for app compatibility
       id: { S: record.id },
       filename: { S: record.filename },
       uploadTime: { S: record.uploadTime },
