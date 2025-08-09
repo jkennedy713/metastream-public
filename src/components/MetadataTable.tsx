@@ -6,7 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadata, MetadataRecord, QueryFilters } from '@/utils/dynamodbClient';
-import { Search, Download, Calendar, RefreshCw } from 'lucide-react';
+import { Search, Download, Calendar, RefreshCw, Trash } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteFromS3 } from '@/utils/s3Uploader';
+import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
 
 const MetadataTable: React.FC = () => {
   const [records, setRecords] = useState<MetadataRecord[]>([]);
@@ -14,6 +17,7 @@ const MetadataTable: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<Record<string, any> | undefined>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const loadData = async (filters: QueryFilters = {}, reset: boolean = false) => {
@@ -63,6 +67,23 @@ const MetadataTable: React.FC = () => {
   const handleRefresh = () => {
     setSearchTerm('');
     loadData({}, true);
+  };
+
+  const handleDelete = async (record: MetadataRecord) => {
+    setDeletingId(record.id);
+    try {
+      const s3Key = (record.metadata && (record.metadata.s3Key || record.metadata.key)) || record.id;
+      await deleteFromS3(s3Key);
+      await deleteMetadataCompat({ id: record.id, filename: record.filename });
+
+      setRecords(prev => prev.filter(r => r.id !== record.id));
+      toast({ title: 'Deleted', description: 'File and metadata removed.' });
+    } catch (e: any) {
+      const message = e?.message || (typeof e === 'string' ? e : 'Unknown error');
+      toast({ title: 'Delete failed', description: message, variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -144,6 +165,7 @@ const MetadataTable: React.FC = () => {
                   <TableHead>Filename</TableHead>
                   <TableHead>Upload Time</TableHead>
                   <TableHead>Metadata Preview</TableHead>
+                  <TableHead className="w-[140px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -157,6 +179,30 @@ const MetadataTable: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       {renderMetadataPreview(record.metadata)}
+                    </TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" disabled={deletingId === record.id}>
+                            <Trash className="w-4 h-4 mr-2" />
+                            {deletingId === record.id ? 'Deleting...' : 'Delete'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this file?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the S3 object and its metadata. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(record)}>
+                              Confirm
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}

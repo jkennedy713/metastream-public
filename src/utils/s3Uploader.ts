@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { getAWSConfig } from './awsConfig';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -130,5 +130,28 @@ export const uploadToS3 = async (
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed',
     };
+  }
+};
+
+export const deleteFromS3 = async (key: string): Promise<void> => {
+  const awsConfig = getAWSConfig();
+  const session = await fetchAuthSession();
+  const credentials = session.credentials;
+  if (!credentials) throw new Error('Not authenticated');
+
+  const s3Client = new S3Client({
+    region: awsConfig.region,
+    credentials: {
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken,
+    },
+  });
+
+  try {
+    await s3Client.send(new DeleteObjectCommand({ Bucket: awsConfig.s3BucketName, Key: key }));
+  } catch (error) {
+    console.error('S3 delete error:', error);
+    throw new Error(error instanceof Error ? `Failed to delete from S3: ${error.message}` : 'Failed to delete from S3');
   }
 };
