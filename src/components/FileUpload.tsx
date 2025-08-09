@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
+import { extractMetadata } from '@/utils/metadataExtractor';
+import { saveMetadata } from '@/utils/dynamodbClient';
 import { Upload, File, Check, X } from 'lucide-react';
 
 const FileUpload: React.FC = () => {
@@ -61,12 +63,40 @@ const FileUpload: React.FC = () => {
     setUploading(true);
     try {
       const result = await uploadToS3(file, setUploadProgress);
-      
-      if (result.success) {
-        toast({
-          title: 'Upload Successful',
-          description: `${file.name} has been uploaded successfully.`,
-        });
+
+      if (result.success && result.key) {
+        // Try to extract lightweight metadata client-side
+        let meta: Record<string, any> = {};
+        try {
+          meta = await extractMetadata(file);
+        } catch (e) {
+          console.warn('Metadata extraction failed', e);
+          meta = { note: 'Metadata extraction failed' };
+        }
+
+        const record = {
+          id: result.key,
+          filename: file.name,
+          uploadTime: new Date().toISOString(),
+          metadata: { ...meta, s3Key: result.key },
+        };
+
+        try {
+          await saveMetadata(record);
+          toast({
+            title: 'Upload Complete',
+            description: 'File uploaded and metadata saved. Check the Dashboard.',
+          });
+        } catch (e) {
+          console.error('Saving metadata failed', e);
+          toast({
+            title: 'Upload Complete (with warning)',
+            description: 'Upload succeeded but saving metadata failed.',
+            variant: 'destructive',
+          });
+        }
+
+        // Reset UI
         setFile(null);
         setUploadProgress(null);
         if (fileInputRef.current) {

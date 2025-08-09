@@ -1,4 +1,4 @@
-import { DynamoDBClient, ScanCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, ScanCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { getAWSConfig } from './awsConfig';
 
@@ -100,4 +100,43 @@ export const queryMetadata = async (
     console.error('DynamoDB query error:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to query metadata');
   }
+};
+
+export const saveMetadata = async (record: {
+  id: string;
+  filename: string;
+  uploadTime: string;
+  metadata: Record<string, any>;
+}): Promise<void> => {
+  const awsConfig = getAWSConfig();
+  // Get AWS credentials from Amplify session
+  const session = await fetchAuthSession();
+  const credentials = session.credentials;
+  const userId = (session as any).userSub || (session as any)?.tokens?.idToken?.payload?.sub || 'unknown-user';
+
+  if (!credentials) {
+    throw new Error('Not authenticated');
+  }
+
+  const dynamoClient = new DynamoDBClient({
+    region: awsConfig.region,
+    credentials: {
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken,
+    },
+  });
+
+  const cmd = new PutItemCommand({
+    TableName: awsConfig.dynamoTableName,
+    Item: {
+      id: { S: record.id },
+      filename: { S: record.filename },
+      uploadTime: { S: record.uploadTime },
+      userId: { S: userId },
+      metadata: { S: JSON.stringify(record.metadata || {}) },
+    },
+  });
+
+  await dynamoClient.send(cmd);
 };
