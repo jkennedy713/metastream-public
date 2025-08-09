@@ -1,3 +1,5 @@
+import * as XLSX from 'xlsx';
+
 export const extractMetadata = async (file: File): Promise<Record<string, any>> => {
   const extension = (file.name.split('.').pop() || '').toLowerCase();
   const base: Record<string, any> = {
@@ -75,7 +77,36 @@ export const extractMetadata = async (file: File): Promise<Record<string, any>> 
     };
   }
 
-  // Fallback for other formats (e.g., xlsx)
+  // Excel spreadsheets
+  if (extension === 'xlsx' || extension === 'xls') {
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetNames = workbook.SheetNames || [];
+      const firstSheetName = sheetNames[0];
+      const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
+      let header: string[] = [];
+      let rowCount = 0;
+      if (firstSheet) {
+        const rows: any[][] = XLSX.utils.sheet_to_json(firstSheet, { header: 1, blankrows: false });
+        rowCount = Math.max(0, (rows?.length || 0) - 1);
+        header = Array.isArray(rows?.[0]) ? rows[0].map((c) => String(c ?? '').trim()).filter(Boolean) : [];
+      }
+      return {
+        ...base,
+        parser: 'xlsx',
+        sheetNames,
+        firstSheetName,
+        columnCount: header.length,
+        columns: header.slice(0, 50),
+        rowCount,
+      };
+    } catch (e) {
+      return { ...base, parser: 'xlsx', parseError: String((e as any)?.message || e) };
+    }
+  }
+
+  // Fallback for other formats
   return {
     ...base,
     parser: 'basic',

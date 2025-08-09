@@ -20,22 +20,36 @@ interface MetadataRecord {
 }
 
 const extractKeyPhrases = (record: MetadataRecord): string[] => {
-  const meta = record.metadata || {};
-  let phrases: string[] = [];
+  const meta: any = record.metadata || {};
+  // Prefer structured keys first
   if (Array.isArray(meta.columns) && meta.columns.length) {
-    phrases = meta.columns.slice(0, 10);
-  } else if (Array.isArray(meta.topLevelKeys) && meta.topLevelKeys.length) {
-    phrases = meta.topLevelKeys.slice(0, 10);
-  } else {
-    const base = record.filename || meta.originalName || '';
-    phrases = base
-      .split(/[^a-zA-Z0-9]+/)
-      .filter(Boolean)
-      .filter((w) => w.length > 2)
-      .slice(0, 10);
+    const cols = (meta.columns as any[]).map((x) => String(x)).filter(Boolean);
+    return Array.from(new Set(cols)).slice(0, 10);
   }
-  // Ensure uniqueness
-  return Array.from(new Set(phrases));
+  if (Array.isArray(meta.topLevelKeys) && meta.topLevelKeys.length) {
+    const keys = (meta.topLevelKeys as any[]).map((x) => String(x)).filter(Boolean);
+    return Array.from(new Set(keys)).slice(0, 10);
+  }
+  // Fallback: derive from text preview (for txt) or any short string values
+  const textSources: string[] = [];
+  if (typeof meta.preview === 'string') textSources.push(meta.preview);
+  // Gather short stringy values in metadata
+  Object.values(meta).forEach((v) => {
+    if (typeof v === 'string' && v.length <= 80) textSources.push(v);
+    if (Array.isArray(v)) {
+      (v as any[]).forEach((x) => typeof x === 'string' && x.length <= 50 && textSources.push(x));
+    }
+  });
+  const text = textSources.join(' ');
+  const stop = new Set(['the','and','for','with','that','this','from','into','over','under','your','file','data','dataset','json','csv','xlsx','tsv','txt','meta','metadata','null','true','false','none','unknown','name']);
+  const words = text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2 && !stop.has(w));
+  const freq: Record<string, number> = {};
+  for (const w of words) freq[w] = (freq[w] || 0) + 1;
+  const ranked = Object.entries(freq).sort((a,b) => b[1]-a[1]).map(([w]) => w);
+  return ranked.slice(0, 10);
 };
 
 const flattenValue = (val: any): string => {
@@ -46,6 +60,15 @@ const flattenValue = (val: any): string => {
   } catch {
     return String(val);
   }
+};
+
+const toTypeTag = (val: any): string => {
+  if (val === null || val === undefined) return 'NULL';
+  if (Array.isArray(val)) return 'LIST';
+  if (typeof val === 'object') return 'MAP';
+  if (typeof val === 'number') return 'NUMBER';
+  if (typeof val === 'boolean') return 'BOOL';
+  return 'STRING';
 };
 
 const RecordDetails: React.FC = () => {
@@ -87,15 +110,20 @@ const RecordDetails: React.FC = () => {
   const phrases = useMemo(() => (record ? extractKeyPhrases(record) : []), [record]);
 
   const metaEntries = useMemo(() => {
-    if (!record) return [] as Array<[string, string]>;
-    const base: Array<[string, string]> = [
+    if (!record) return [] as Array<{ k: string; t: string; v: string }>;
+    const rows: Array<{ k: string; t: string; v: string }> = [];
+    const baseFields: Array<[string, any]> = [
       ['ID', record.id],
       ['Filename', record.filename],
       ['Upload Time', record.uploadTime],
       ['User ID', record.userId],
+      ['S3 Key', (record.metadata as any)?.s3Key || (record.metadata as any)?.key || record.id],
     ];
-    const meta = Object.entries(record.metadata || {}).map(([k, v]) => [k, flattenValue(v)] as [string, string]);
-    return [...base, ...meta];
+    baseFields.forEach(([k, val]) => rows.push({ k, t: toTypeTag(val), v: flattenValue(val) }));
+    Object.entries(record.metadata || {}).forEach(([k, val]) => {
+      rows.push({ k, t: toTypeTag(val), v: flattenValue(val) });
+    });
+    return rows;
   }, [record]);
 
   const onDelete = async () => {
@@ -182,29 +210,31 @@ const RecordDetails: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-64">Field</TableHead>
+                    <TableHead className="w-64">Attribute</TableHead>
+                    <TableHead className="w-28">Type</TableHead>
                     <TableHead>Value</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={2} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
                         Loading...
                       </TableCell>
                     </TableRow>
                   ) : record ? (
-                    metaEntries.map(([k, v]) => (
-                      <TableRow key={k}>
-                        <TableCell className="font-medium">{k}</TableCell>
+                    metaEntries.map((row) => (
+                      <TableRow key={row.k}>
+                        <TableCell className="font-medium">{row.k}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{row.t}</TableCell>
                         <TableCell>
-                          <pre className="whitespace-pre-wrap break-words text-sm">{v}</pre>
+                          <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={2} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
                         Record not found
                       </TableCell>
                     </TableRow>
