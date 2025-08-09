@@ -87,11 +87,12 @@ const FileUpload: React.FC = () => {
             title: 'Upload Complete',
             description: 'File uploaded and metadata saved. Check the Dashboard.',
           });
-        } catch (e) {
+        } catch (e: any) {
           console.error('Saving metadata failed', e);
+          const message = e?.message || (typeof e === 'string' ? e : 'Unknown error');
           toast({
             title: 'Upload Complete (with warning)',
-            description: 'Upload succeeded but saving metadata failed.',
+            description: `Saving metadata failed: ${message}`,
             variant: 'destructive',
           });
         }
