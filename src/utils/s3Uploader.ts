@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { getAWSConfig } from './awsConfig';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const ALLOWED_FILE_TYPES = ['.csv', '.tsv', '.xlsx', '.txt', '.json'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -37,7 +38,7 @@ export const uploadToS3 = async (
     let credentials = session.credentials;
 
     console.log('[S3] credentials present?', Boolean(credentials));
-    
+
     if (!credentials) {
       // Force a refresh once (after a fresh sign-in, identity creds may not be materialized yet)
       try {
@@ -48,11 +49,12 @@ export const uploadToS3 = async (
         console.warn('[S3] fetchAuthSession forceRefresh failed', e);
       }
     }
-    
+
     if (!credentials) {
       throw new Error('Not authenticated');
     }
 
+    // Create an S3 client only for signing
     const s3Client = new S3Client({
       region: awsConfig.region,
       credentials: {
@@ -63,48 +65,62 @@ export const uploadToS3 = async (
     });
 
     const key = `uploads/${Date.now()}-${file.name}`;
-    
-    const uploadCommand = new PutObjectCommand({
+
+    // Use a presigned PUT URL to avoid streaming issues across browsers.
+    // Note: We intentionally omit Metadata here to prevent signature/header mismatches.
+    const putCmd = new PutObjectCommand({
       Bucket: awsConfig.s3BucketName,
       Key: key,
-      Body: file,
       ContentType: file.type || 'application/octet-stream',
-      Metadata: {
-        originalName: file.name,
-        uploadTime: new Date().toISOString(),
-      },
     });
 
-    // For progress tracking, we'll simulate it since AWS SDK v3 doesn't provide built-in progress
-    if (onProgress) {
-      const progressInterval = setInterval(() => {
-        // Simulate progress
-        const randomProgress = Math.min(90, Math.random() * 100);
-        onProgress({
-          loaded: (file.size * randomProgress) / 100,
-          total: file.size,
-          percentage: randomProgress,
-        });
-      }, 100);
+    const signedUrl = await getSignedUrl(s3Client, putCmd, { expiresIn: 3600 });
 
-      try {
-        await s3Client.send(uploadCommand);
-        clearInterval(progressInterval);
-        onProgress({ loaded: file.size, total: file.size, percentage: 100 });
-      } catch (error) {
-        clearInterval(progressInterval);
-        throw error;
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', signedUrl);
+      // Content-Type must match what we signed
+      if (file.type) {
+        xhr.setRequestHeader('Content-Type', file.type);
+      } else {
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       }
-    } else {
-      await s3Client.send(uploadCommand);
-    }
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            onProgress({
+              loaded: e.loaded,
+              total: e.total,
+              percentage: Math.round((e.loaded / e.total) * 100),
+            });
+          }
+        };
+      }
+
+      xhr.onerror = () => {
+        reject(new Error('Network error during upload'));
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          // Ensure 100% progress if supported
+          onProgress?.({ loaded: file.size, total: file.size, percentage: 100 });
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.send(file);
+    });
 
     return { success: true, key };
   } catch (error) {
     console.error('S3 upload error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Upload failed' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Upload failed',
     };
   }
 };
