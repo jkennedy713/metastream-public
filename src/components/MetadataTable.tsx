@@ -25,14 +25,18 @@ const MetadataTable: React.FC = () => {
         reset ? undefined : lastEvaluatedKey
       );
       
+      // Sort by newest uploadTime first
+      const sortByLatest = (arr: MetadataRecord[]) =>
+        [...arr].sort(
+          (a, b) => new Date(b.uploadTime).getTime() - new Date(a.uploadTime).getTime()
+        );
+
       if (reset) {
-        setRecords(result.items);
+        setRecords(sortByLatest(result.items));
       } else {
-        setRecords(prev => [...prev, ...result.items]);
+        setRecords(prev => sortByLatest([...prev, ...result.items]));
       }
       
-      setHasMore(result.hasMore);
-      setLastEvaluatedKey(result.lastEvaluatedKey);
     } catch (error) {
       toast({
         title: 'Error Loading Data',
@@ -44,10 +48,9 @@ const MetadataTable: React.FC = () => {
     }
   };
 
-  // Auto-load disabled to avoid preview fetch crash; use Search/Refresh to load manually
-  // useEffect(() => {
-  //   loadData({}, true);
-  // }, []);
+  useEffect(() => {
+    loadData({}, true);
+  }, []);
 
   const handleSearch = () => {
     const filters: QueryFilters = {};
