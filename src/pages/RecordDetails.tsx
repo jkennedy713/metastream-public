@@ -21,6 +21,10 @@ interface MetadataRecord {
 
 const extractKeyPhrases = (record: MetadataRecord): string[] => {
   const meta: any = record.metadata || {};
+  if (Array.isArray(meta.keyPhrases) && meta.keyPhrases.length) {
+    const keys = (meta.keyPhrases as any[]).map((x) => String(x)).filter(Boolean);
+    return Array.from(new Set(keys)).slice(0, 20);
+  }
   // Prefer structured keys first
   if (Array.isArray(meta.columns) && meta.columns.length) {
     const cols = (meta.columns as any[]).map((x) => String(x)).filter(Boolean);

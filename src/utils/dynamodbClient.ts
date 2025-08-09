@@ -59,11 +59,21 @@ export const queryMetadata = async (
       id: item.id?.S || (item as any).Id?.S || '',
       filename: item.filename?.S || (item as any).FileName?.S || '',
       uploadTime: item.uploadTime?.S || (item as any).UploadTime?.S || '',
-      metadata: item.metadata
-        ? JSON.parse(item.metadata.S || '{}')
-        : (item as any).Metadata
-        ? JSON.parse((item as any).Metadata.S || '{}')
-        : {},
+      metadata: (() => {
+        const base = item.metadata
+          ? JSON.parse(item.metadata.S || '{}')
+          : (item as any).Metadata
+          ? JSON.parse((item as any).Metadata.S || '{}')
+          : {};
+        // Merge in KeyPhrases from top-level DynamoDB attribute if present
+        const kp = (item as any).KeyPhrases?.L
+          ? ((item as any).KeyPhrases.L as Array<{ S?: string }>).map(x => x.S || '').filter(Boolean)
+          : undefined;
+        if (kp && kp.length) {
+          return { ...base, keyPhrases: kp };
+        }
+        return base;
+      })(),
       userId: item.userId?.S || (item as any).UserId?.S || '',
     }));
 

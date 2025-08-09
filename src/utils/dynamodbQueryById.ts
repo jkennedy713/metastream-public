@@ -25,7 +25,6 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
     },
   });
 
-  // Use a scan with FilterExpression to locate by any of the potential key names
   const cmd = new ScanCommand({
     TableName: awsConfig.dynamoTableName,
     FilterExpression: '#id = :v OR #Id = :v OR #RecordID = :v',
@@ -44,16 +43,21 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
   const item = (res.Items || [])[0];
   if (!item) return null;
 
+  const baseMeta = item.metadata
+    ? JSON.parse((item as any).metadata?.S || '{}')
+    : (item as any).Metadata
+    ? JSON.parse((item as any).Metadata?.S || '{}')
+    : {};
+  const keyPhrases = (item as any).KeyPhrases?.L
+    ? ((item as any).KeyPhrases.L as Array<{ S?: string }>).map(x => x.S || '').filter(Boolean)
+    : undefined;
+
   const mapped: MetadataRecord = {
-    id: item.id?.S || (item as any).Id?.S || (item as any).RecordID?.S || '',
-    filename: item.filename?.S || (item as any).FileName?.S || '',
-    uploadTime: item.uploadTime?.S || (item as any).UploadTime?.S || '',
-    metadata: item.metadata
-      ? JSON.parse(item.metadata.S || '{}')
-      : (item as any).Metadata
-      ? JSON.parse((item as any).Metadata.S || '{}')
-      : {},
-    userId: item.userId?.S || (item as any).UserId?.S || '',
+    id: (item as any).id?.S || (item as any).Id?.S || (item as any).RecordID?.S || '',
+    filename: (item as any).filename?.S || (item as any).FileName?.S || '',
+    uploadTime: (item as any).uploadTime?.S || (item as any).UploadTime?.S || '',
+    metadata: keyPhrases && keyPhrases.length ? { ...baseMeta, keyPhrases } : baseMeta,
+    userId: (item as any).userId?.S || (item as any).UserId?.S || '',
   };
 
   return mapped;
