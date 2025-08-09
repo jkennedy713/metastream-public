@@ -136,6 +136,12 @@ export const saveMetadata = async (record: {
     Item: {
       // Required partition key for existing table schema
       FileName: { S: record.filename },
+      // Include capitalized attributes for legacy/alternate schema compatibility
+      UploadTime: { S: record.uploadTime },
+      Id: { S: record.id },
+      UserId: { S: userId },
+      Metadata: { S: JSON.stringify(record.metadata || {}) },
+
       // Keep lowercase attributes for app compatibility
       id: { S: record.id },
       filename: { S: record.filename },
@@ -145,5 +151,10 @@ export const saveMetadata = async (record: {
     },
   });
 
-  await dynamoClient.send(cmd);
+  try {
+    await dynamoClient.send(cmd);
+  } catch (error) {
+    console.error('DynamoDB put error:', error);
+    throw new Error(error instanceof Error ? `Failed to save metadata: ${error.message}` : 'Failed to save metadata');
+  }
 };
