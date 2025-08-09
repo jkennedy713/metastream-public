@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadata, MetadataRecord, QueryFilters } from '@/utils/dynamodbClient';
-import { Search, Download, Calendar, RefreshCw, Trash } from 'lucide-react';
+import { Search, Download, Calendar, RefreshCw, Trash, Eye } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteFromS3 } from '@/utils/s3Uploader';
 import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
@@ -19,6 +20,7 @@ const MetadataTable: React.FC = () => {
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<Record<string, any> | undefined>();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const loadData = async (filters: QueryFilters = {}, reset: boolean = false) => {
     setLoading(true);
@@ -84,6 +86,10 @@ const MetadataTable: React.FC = () => {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleView = (record: MetadataRecord) => {
+    navigate(`/record/${encodeURIComponent(record.id)}`, { state: { record } });
   };
 
   const formatDate = (dateString: string) => {
@@ -165,7 +171,7 @@ const MetadataTable: React.FC = () => {
                   <TableHead>Filename</TableHead>
                   <TableHead>Upload Time</TableHead>
                   <TableHead>Metadata Preview</TableHead>
-                  <TableHead className="w-[140px]">Actions</TableHead>
+                  <TableHead className="w-[220px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -181,28 +187,33 @@ const MetadataTable: React.FC = () => {
                       {renderMetadataPreview(record.metadata)}
                     </TableCell>
                     <TableCell>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm" disabled={deletingId === record.id}>
-                            <Trash className="w-4 h-4 mr-2" />
-                            {deletingId === record.id ? 'Deleting...' : 'Delete'}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete this file?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove the S3 object and its metadata. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(record)}>
-                              Confirm
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleView(record)}>
+                          <Eye className="w-4 h-4 mr-2" /> View
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={deletingId === record.id}>
+                              <Trash className="w-4 h-4 mr-2" />
+                              {deletingId === record.id ? 'Deleting...' : 'Delete'}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this file?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the S3 object and its metadata. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(record)}>
+                                Confirm
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
