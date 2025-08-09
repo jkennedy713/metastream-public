@@ -148,15 +148,7 @@ const RecordDetails: React.FC = () => {
   };
 
   const handleBack = () => {
-    try {
-      if (window.history.length > 1) {
-        navigate(-1);
-      } else {
-        navigate('/dashboard');
-      }
-    } catch {
-      navigate('/dashboard');
-    }
+    navigate('/dashboard');
   };
 
   return (
