@@ -79,6 +79,8 @@ export const uploadToS3 = async (
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', signedUrl);
+      xhr.withCredentials = false;
+      xhr.timeout = 5 * 60 * 1000; // 5 min
       // Content-Type must match what we signed
       if (file.type) {
         xhr.setRequestHeader('Content-Type', file.type);
@@ -99,7 +101,12 @@ export const uploadToS3 = async (
       }
 
       xhr.onerror = () => {
-        reject(new Error('Network error during upload'));
+        const hint = 'Likely CORS preflight blocked. Ensure your S3 bucket CORS allows PUT/HEAD/GET/OPTIONS from this origin and AllowedHeaders:*';
+        reject(new Error(`Network error during upload. ${hint}`));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error('Upload timed out. Please try again or check network connectivity.'));
       };
 
       xhr.onload = () => {
@@ -108,7 +115,8 @@ export const uploadToS3 = async (
           onProgress?.({ loaded: file.size, total: file.size, percentage: 100 });
           resolve();
         } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
+          const body = (xhr.responseText || '').slice(0, 300);
+          reject(new Error(`Upload failed with status ${xhr.status}. ${body}`));
         }
       };
 
