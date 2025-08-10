@@ -11,6 +11,7 @@ const HIDDEN_KEYS_CANON = new Set<string>([
   'sizebytes',
   'lastmodified',
   'parser',
+  'preview', // hide inline preview from metadata table
 ]);
 
 export const isHiddenMetaKey = (key: string): boolean => {
