@@ -165,6 +165,16 @@ const RecordDetails: React.FC = () => {
     run();
   }, [record, contentText]);
 
+  const previewText = useMemo(() => {
+    const metaPrev = typeof (record as any)?.metadata?.preview === 'string' ? (record as any).metadata.preview as string : '';
+    if (metaPrev && metaPrev.trim()) return metaPrev;
+    if (contentText && contentText.trim()) {
+      const lines = contentText.split(/\r?\n/).slice(0, 3).join('\n');
+      return lines.length > 500 ? `${lines.slice(0, 500)}…` : lines;
+    }
+    return null;
+  }, [record, contentText]);
+
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
     const rows: Array<{ k: string; t: string; v: string }> = [];
@@ -250,19 +260,6 @@ const RecordDetails: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <h3 className="text-sm font-medium mb-2">File Content</h3>
-              {contentLoading ? (
-                <span className="text-muted-foreground text-sm">Loading content...</span>
-              ) : contentText ? (
-                <div className="rounded-md border p-3 bg-muted/30 max-h-64 overflow-auto">
-                  <pre className="whitespace-pre-wrap break-words text-xs">{contentText}</pre>
-                </div>
-              ) : (
-                <span className="text-muted-foreground text-sm">Content preview unavailable</span>
-              )}
-            </div>
-
-            <div>
               <h3 className="text-sm font-medium mb-2">Key Phrases</h3>
               <div className="flex flex-wrap gap-2">
                 {phrases.length ? (
@@ -273,6 +270,17 @@ const RecordDetails: React.FC = () => {
                   <span className="text-muted-foreground text-sm">No key phrases available</span>
                 )}
               </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium mb-2">Preview</h3>
+              {previewText ? (
+                <div className="rounded-md border p-3 bg-muted/30">
+                  <pre className="whitespace-pre-wrap break-words text-xs">{previewText}</pre>
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-sm">No preview available</span>
+              )}
             </div>
 
             <div className="border rounded-lg overflow-hidden">
@@ -310,6 +318,19 @@ const RecordDetails: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium mb-2">File Content</h3>
+              {contentLoading ? (
+                <span className="text-muted-foreground text-sm">Loading content...</span>
+              ) : contentText ? (
+                <div className="rounded-md border p-3 bg-muted/30 max-h-64 overflow-auto">
+                  <pre className="whitespace-pre-wrap break-words text-xs">{contentText}</pre>
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-sm">Content preview unavailable</span>
+              )}
             </div>
           </CardContent>
         </Card>
