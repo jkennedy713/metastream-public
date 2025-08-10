@@ -181,15 +181,24 @@ const RecordDetails: React.FC = () => {
 
     // Only keep essential base fields
     const baseFields: Array<[string, any]> = [
-      ['Filename', record.filename],
+      ['File Name', record.filename],
       ['Upload Time', record.uploadTime],
     ];
     baseFields.forEach(([k, val]) => rows.push({ k, t: toTypeTag(val), v: flattenValue(val) }));
 
+    // Label mapping for select metadata keys
+    const labelFor = (key: string): string => {
+      const c = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (c === 'extension') return 'File Type';
+      if (c === 'sizemb') return 'Size';
+      if (c === 'approxlinecount') return 'Line Count';
+      return key;
+    };
+
     // Add filtered metadata entries
     Object.entries(record.metadata || {}).forEach(([k, val]) => {
       if (!isHiddenMetaKey(k)) {
-        rows.push({ k, t: toTypeTag(val), v: flattenValue(val) });
+        rows.push({ k: labelFor(k), t: toTypeTag(val), v: flattenValue(val) });
       }
     });
 
