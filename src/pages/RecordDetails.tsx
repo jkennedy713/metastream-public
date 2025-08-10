@@ -134,7 +134,11 @@ const RecordDetails: React.FC = () => {
     if (!record) return;
     setDeleting(true);
     try {
-      const s3Key = (record.metadata && ((record.metadata as any).s3Key || (record.metadata as any).key)) || record.id;
+      const s3KeyRaw = (record.metadata && ((record.metadata as any).s3Key || (record.metadata as any).key)) || record.id;
+      const s3Key = typeof s3KeyRaw === 'string' ? s3KeyRaw.trim() : '';
+      if (!s3Key) {
+        throw new Error('Missing S3 object Key for this record. Ensure metadata contains s3Key or key.');
+      }
       await deleteFromS3(s3Key);
       await deleteMetadataCompat({ id: record.id, filename: record.filename });
       toast({ title: 'Deleted', description: 'File and metadata removed.' });
