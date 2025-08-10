@@ -10,6 +10,7 @@ import { ArrowLeft, Trash } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteFromS3 } from '@/utils/s3Uploader';
 import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
+import { isHiddenMetaKey } from '@/utils/metadataDisplay';
 
 interface MetadataRecord {
   id: string;
@@ -116,17 +117,21 @@ const RecordDetails: React.FC = () => {
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
     const rows: Array<{ k: string; t: string; v: string }> = [];
+
+    // Only keep essential base fields
     const baseFields: Array<[string, any]> = [
-      ['ID', record.id],
       ['Filename', record.filename],
       ['Upload Time', record.uploadTime],
-      ['User ID', record.userId],
-      ['S3 Key', (record.metadata as any)?.s3Key || (record.metadata as any)?.key || record.id],
     ];
     baseFields.forEach(([k, val]) => rows.push({ k, t: toTypeTag(val), v: flattenValue(val) }));
+
+    // Add filtered metadata entries
     Object.entries(record.metadata || {}).forEach(([k, val]) => {
-      rows.push({ k, t: toTypeTag(val), v: flattenValue(val) });
+      if (!isHiddenMetaKey(k)) {
+        rows.push({ k, t: toTypeTag(val), v: flattenValue(val) });
+      }
     });
+
     return rows;
   }, [record]);
 
@@ -189,7 +194,7 @@ const RecordDetails: React.FC = () => {
           <CardHeader>
             <CardTitle>{record?.filename || 'Record Details'}</CardTitle>
             <CardDescription>
-              Detailed metadata for your uploaded dataset
+              Detailed metadata for your uploaded dataset (technical fields hidden)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

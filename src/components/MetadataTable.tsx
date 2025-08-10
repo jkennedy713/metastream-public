@@ -11,6 +11,7 @@ import { Search, Download, Calendar, RefreshCw, Trash, Eye } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteFromS3 } from '@/utils/s3Uploader';
 import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
+import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
 
 const MetadataTable: React.FC = () => {
   const [records, setRecords] = useState<MetadataRecord[]>([]);
@@ -105,7 +106,8 @@ const MetadataTable: React.FC = () => {
   };
 
   const renderMetadataPreview = (metadata: Record<string, any>) => {
-    const keys = Object.keys(metadata).slice(0, 3);
+    const filtered = filterMetadataForDisplay(metadata);
+    const keys = Object.keys(filtered).slice(0, 3);
     if (keys.length === 0) return <span className="text-muted-foreground">No metadata</span>;
     
     return (
@@ -114,20 +116,19 @@ const MetadataTable: React.FC = () => {
           <div key={key} className="text-xs">
             <span className="font-medium">{key}:</span>{' '}
             <span className="text-muted-foreground">
-              {String(metadata[key]).slice(0, 50)}
-              {String(metadata[key]).length > 50 ? '...' : ''}
+              {String(filtered[key]).slice(0, 50)}
+              {String(filtered[key]).length > 50 ? '...' : ''}
             </span>
           </div>
         ))}
-        {Object.keys(metadata).length > 3 && (
+        {Object.keys(filtered).length > 3 && (
           <Badge variant="secondary" className="text-xs">
-            +{Object.keys(metadata).length - 3} more
+            +{Object.keys(filtered).length - 3} more
           </Badge>
         )}
       </div>
     );
   };
-
   return (
     <Card>
       <CardHeader>
