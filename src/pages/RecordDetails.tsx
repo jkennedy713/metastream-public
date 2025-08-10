@@ -78,6 +78,17 @@ const toTypeTag = (val: any): string => {
   return 'STRING';
 };
 
+const formatBytes = (bytes?: number): string => {
+  const b = typeof bytes === 'number' ? bytes : NaN;
+  if (!b || isNaN(b) || b < 0) return 'Unknown';
+  const units = ['B','KB','MB','GB','TB'];
+  let val = b;
+  let i = 0;
+  while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+  const fixed = i === 0 ? 0 : 2;
+  return `${val.toFixed(fixed)} ${units[i]}`;
+};
+
 const RecordDetails: React.FC = () => {
   const params = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -165,15 +176,6 @@ const RecordDetails: React.FC = () => {
     run();
   }, [record, contentText]);
 
-  const previewText = useMemo(() => {
-    const metaPrev = typeof (record as any)?.metadata?.preview === 'string' ? (record as any).metadata.preview as string : '';
-    if (metaPrev && metaPrev.trim()) return metaPrev;
-    if (contentText && contentText.trim()) {
-      const lines = contentText.split(/\r?\n/).slice(0, 3).join('\n');
-      return lines.length > 500 ? `${lines.slice(0, 500)}…` : lines;
-    }
-    return null;
-  }, [record, contentText]);
 
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
@@ -283,13 +285,21 @@ const RecordDetails: React.FC = () => {
 
             <div>
               <h3 className="text-sm font-medium mb-2">Preview</h3>
-              {previewText ? (
-                <div className="rounded-md border p-3 bg-muted/30">
-                  <pre className="whitespace-pre-wrap break-words text-xs">{previewText}</pre>
+              <div className="space-y-1 text-sm">
+                <div>
+                  <span className="font-medium">Type:</span>{' '}
+                  <span className="text-muted-foreground">
+                    {String((record as any)?.metadata?.extension || (record as any)?.metadata?.mimeType || 'Unknown')}
+                  </span>
                 </div>
-              ) : (
-                <span className="text-muted-foreground text-sm">No preview available</span>
-              )}
+                <div>
+                  <span className="font-medium">Size:</span>{' '}
+                  <span className="text-muted-foreground">
+                    {formatBytes(Number((record as any)?.metadata?.sizeBytes)) ||
+                      ((record as any)?.metadata?.sizeMB ? `${Number((record as any)?.metadata?.sizeMB).toFixed(2)} MB` : 'Unknown')}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="border rounded-lg overflow-hidden">

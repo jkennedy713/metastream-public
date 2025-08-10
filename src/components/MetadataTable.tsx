@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadata, MetadataRecord, QueryFilters } from '@/utils/dynamodbClient';
 import { Search, Download, Calendar, RefreshCw, Trash, Eye } from 'lucide-react';
@@ -106,38 +106,24 @@ const MetadataTable: React.FC = () => {
   };
 
   const renderMetadataPreview = (metadata: Record<string, any>) => {
-    const filtered = filterMetadataForDisplay(metadata);
-    // Exclude approxLineCount and remap labels for dashboard preview
-    const entries = Object.entries(filtered).filter(([k]) => {
-      const c = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-      return c !== 'approxlinecount';
-    });
-    if (entries.length === 0) return <span className="text-muted-foreground">No metadata</span>;
-
-    const display = entries.slice(0, 3);
-
-    const labelFor = (key: string) => {
-      const c = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (c === 'extension') return 'Type';
-      if (c === 'sizemb') return 'Size';
-      return key;
-    };
+    const ext = String((metadata?.extension ?? '') || '').trim();
+    const mime = String((metadata?.mimeType ?? '') || '').trim();
+    const type = ext || mime || 'Unknown';
+    const sizeBytes = Number((metadata as any)?.sizeBytes);
+    const sizeMB = Number((metadata as any)?.sizeMB);
+    const size = !isNaN(sizeBytes) && sizeBytes > 0
+      ? (() => {
+          const units = ['B','KB','MB','GB','TB'];
+          let b = sizeBytes;
+          let i = 0;
+          while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+          return `${b.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+        })()
+      : (!isNaN(sizeMB) && sizeMB > 0 ? `${sizeMB.toFixed(2)} MB` : 'Unknown');
     return (
-      <div className="space-y-1">
-        {display.map(([key, value]) => (
-          <div key={key} className="text-xs">
-            <span className="font-medium">{labelFor(key)}:</span>{' '}
-            <span className="text-muted-foreground">
-              {String(value).slice(0, 50)}
-              {String(value).length > 50 ? '...' : ''}
-            </span>
-          </div>
-        ))}
-        {entries.length > 3 && (
-          <Badge variant="secondary" className="text-xs">
-            +{entries.length - 3} more
-          </Badge>
-        )}
+      <div className="space-y-1 text-xs">
+        <div><span className="font-medium">Type:</span> <span className="text-muted-foreground">{type}</span></div>
+        <div><span className="font-medium">Size:</span> <span className="text-muted-foreground">{size}</span></div>
       </div>
     );
   };
