@@ -107,23 +107,35 @@ const MetadataTable: React.FC = () => {
 
   const renderMetadataPreview = (metadata: Record<string, any>) => {
     const filtered = filterMetadataForDisplay(metadata);
-    const keys = Object.keys(filtered).slice(0, 3);
-    if (keys.length === 0) return <span className="text-muted-foreground">No metadata</span>;
-    
+    // Exclude approxLineCount and remap labels for dashboard preview
+    const entries = Object.entries(filtered).filter(([k]) => {
+      const c = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return c !== 'approxlinecount';
+    });
+    if (entries.length === 0) return <span className="text-muted-foreground">No metadata</span>;
+
+    const display = entries.slice(0, 3);
+
+    const labelFor = (key: string) => {
+      const c = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (c === 'extension') return 'Type';
+      if (c === 'sizemb') return 'Size';
+      return key;
+    };
     return (
       <div className="space-y-1">
-        {keys.map(key => (
+        {display.map(([key, value]) => (
           <div key={key} className="text-xs">
-            <span className="font-medium">{key}:</span>{' '}
+            <span className="font-medium">{labelFor(key)}:</span>{' '}
             <span className="text-muted-foreground">
-              {String(filtered[key]).slice(0, 50)}
-              {String(filtered[key]).length > 50 ? '...' : ''}
+              {String(value).slice(0, 50)}
+              {String(value).length > 50 ? '...' : ''}
             </span>
           </div>
         ))}
-        {Object.keys(filtered).length > 3 && (
+        {entries.length > 3 && (
           <Badge variant="secondary" className="text-xs">
-            +{Object.keys(filtered).length - 3} more
+            +{entries.length - 3} more
           </Badge>
         )}
       </div>
@@ -173,9 +185,9 @@ const MetadataTable: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Filename</TableHead>
+                  <TableHead>File Name</TableHead>
                   <TableHead>Upload Time</TableHead>
-                  <TableHead>Metadata Preview</TableHead>
+                  <TableHead>Preview</TableHead>
                   <TableHead className="w-[220px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
