@@ -26,6 +26,17 @@ export const saveMetadataCompat = async (record: {
     },
   });
 
+  // Ensure metadata includes a valid S3 object key for downstream deletes
+  const normalizedMeta = (() => {
+    const m = { ...(record.metadata || {}) } as Record<string, any>;
+    // Prefer existing s3Key; fallback to 'key'; finally use record.id
+    if (!m.s3Key && typeof m.key === 'string' && m.key.trim()) m.s3Key = m.key.trim();
+    if (!m.s3Key && typeof record.id === 'string' && record.id.trim()) m.s3Key = record.id.trim();
+    // Provide 'key' alias too for broader compatibility
+    if (!m.key && typeof m.s3Key === 'string') m.key = m.s3Key;
+    return m;
+  })();
+
   const cmd = new PutItemCommand({
     TableName: awsConfig.dynamoTableName,
     Item: {
@@ -37,14 +48,14 @@ export const saveMetadataCompat = async (record: {
       UploadTime: { S: record.uploadTime },
       Id: { S: record.id },
       UserId: { S: userId },
-      Metadata: { S: JSON.stringify(record.metadata || {}) },
+      Metadata: { S: JSON.stringify(normalizedMeta) },
 
       // Lowercase attributes for app compatibility
       id: { S: record.id },
       filename: { S: record.filename },
       uploadTime: { S: record.uploadTime },
       userId: { S: userId },
-      metadata: { S: JSON.stringify(record.metadata || {}) },
+      metadata: { S: JSON.stringify(normalizedMeta) },
     },
   });
 
