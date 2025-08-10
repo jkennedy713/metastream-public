@@ -41,7 +41,15 @@ const MetadataTable: React.FC = () => {
       if (reset) {
         setRecords(sortByLatest(result.items));
       } else {
-        setRecords(prev => sortByLatest([...prev, ...result.items]));
+        setRecords(prev =>
+          sortByLatest(
+            Array.from(
+              new Map(
+                [...prev, ...result.items].map(r => [r.id || `${r.filename}::${r.uploadTime}`, r])
+              ).values()
+            )
+          )
+        );
       }
       
     } catch (error) {
@@ -94,7 +102,12 @@ const MetadataTable: React.FC = () => {
   };
 
   const handleView = (record: MetadataRecord) => {
-    navigate(`/record/${encodeURIComponent(record.id)}`, { state: { record } });
+    const id = (record.id || '').trim();
+    if (!id) {
+      toast({ title: 'Cannot open', description: 'Record is missing an ID', variant: 'destructive' });
+      return;
+    }
+    navigate(`/record/${encodeURIComponent(id)}`, { state: { record } });
   };
 
   const formatDate = (dateString: string) => {
@@ -179,7 +192,7 @@ const MetadataTable: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {records.map((record) => (
-                  <TableRow key={record.id}>
+                  <TableRow key={record.id || `${record.filename}-${record.uploadTime}`}>
                     <TableCell className="font-medium">
                       {record.filename}
                     </TableCell>
