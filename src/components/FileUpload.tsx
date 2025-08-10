@@ -4,42 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
-import { extractMetadata } from '@/utils/metadataExtractor';
-import { saveMetadataCompat as saveMetadata } from '@/utils/dynamodbCompat';
-import { detectKeyPhrases } from '@/utils/comprehend';
-import * as XLSX from 'xlsx';
+// import { extractMetadata } from '@/utils/metadataExtractor'; // handled by your Lambda
+import { queryMetadata } from '@/utils/dynamodbClient';
 import { Upload, File, Check, X } from 'lucide-react';
 
-// Helper to extract textual content for Comprehend
-const getTextForComprehend = async (file: File): Promise<string> => {
-  const name = file.name.toLowerCase();
-  const ext = (name.split('.').pop() || '').trim();
-  try {
-    if (['txt', 'csv', 'tsv', 'json'].includes(ext)) {
-      const t = await file.text();
-      return typeof t === 'string' ? t : '';
-    }
-    if (ext === 'xlsx' || ext === 'xls') {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
-      const sheetName = wb.SheetNames?.[0];
-      const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
-      if (sheet) {
-        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
-        const firstRows = (rows || []).slice(0, 50);
-        const asText = firstRows
-          .map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '').trim()).join(' ') : String(r ?? '')))
-          .join('\n');
-        return asText;
-      }
-      return '';
-    }
-    const t = await file.text().catch(() => '');
-    return t || '';
-  } catch {
-    return '';
-  }
-};
+// Polling helper for DynamoDB appearance after Lambda processing
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 const FileUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -98,56 +68,42 @@ const FileUpload: React.FC = () => {
       const result = await uploadToS3(file, setUploadProgress);
 
       if (result.success && result.key) {
-        // Try to extract lightweight metadata client-side
-        let meta: Record<string, any> = {};
-        try {
-          meta = await extractMetadata(file);
-        } catch (e) {
-          console.warn('Metadata extraction failed', e);
-          meta = { note: 'Metadata extraction failed' };
-        }
+        const key = result.key;
+        const fname = file.name;
 
-        // Detect key phrases from file content for all supported types
-        try {
-          const textForNLP = await getTextForComprehend(file);
-          if (textForNLP && textForNLP.trim()) {
-            const phrases = await detectKeyPhrases(textForNLP);
-            if (phrases?.length) {
-              meta.keyPhrases = phrases;
-            }
-          }
-        } catch (e) {
-          console.warn('Key phrase extraction failed', e);
-        }
+        toast({
+          title: 'Upload Complete',
+          description: 'Processing in Lambda… It will appear on the Dashboard shortly.',
+        });
 
-        const record = {
-          id: result.key,
-          filename: file.name,
-          uploadTime: new Date().toISOString(),
-          metadata: { ...meta, s3Key: result.key },
-        };
-
-        try {
-          await saveMetadata(record);
-          toast({
-            title: 'Upload Complete',
-            description: 'File uploaded and metadata saved. Check the Dashboard.',
-          });
-        } catch (e: any) {
-          console.error('Saving metadata failed', e);
-          const message = e?.message || (typeof e === 'string' ? e : 'Unknown error');
-          toast({
-            title: 'Upload Complete (with warning)',
-            description: `Saving metadata failed: ${message}`,
-            variant: 'destructive',
-          });
-        }
-
-        // Reset UI
+        // Reset UI immediately after upload
         setFile(null);
         setUploadProgress(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
+        }
+
+        // Poll DynamoDB until Lambda writes the record
+        try {
+          const maxAttempts = 10;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const res = await queryMetadata({}, 200);
+            const found = res.items.find((r) => {
+              const m: any = r.metadata || {};
+              const s3k: string = (m.s3Key || m.key || '').trim();
+              return r.id === key || s3k === key || r.filename === fname;
+            });
+            if (found) {
+              toast({
+                title: 'Processing Complete',
+                description: 'Your file has been indexed. Check the Dashboard.',
+              });
+              break;
+            }
+            await sleep(3000);
+          }
+        } catch (e) {
+          console.warn('Polling for record failed', e);
         }
       } else {
         toast({
