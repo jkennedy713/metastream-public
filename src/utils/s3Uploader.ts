@@ -149,9 +149,25 @@ export const deleteFromS3 = async (key: string): Promise<void> => {
   });
 
   try {
-    await s3Client.send(new DeleteObjectCommand({ Bucket: awsConfig.s3BucketName, Key: key }));
-  } catch (error) {
+    // Prefer presigned DELETE URL to minimize CORS header issues
+    const delCmd = new DeleteObjectCommand({ Bucket: awsConfig.s3BucketName, Key: key });
+    const signedUrl = await getSignedUrl(s3Client, delCmd, { expiresIn: 3600 });
+
+    const res = await fetch(signedUrl, { method: 'DELETE', mode: 'cors' });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Delete failed with status ${res.status}. ${body.slice(0, 300)}`);
+    }
+  } catch (error: any) {
     console.error('S3 delete error:', error);
-    throw new Error(error instanceof Error ? `Failed to delete from S3: ${error.message}` : 'Failed to delete from S3');
+    // Helpful hints for common issues
+    const msg = error?.message || String(error);
+    if (/CORS|preflight|Access-Control|TypeError: Failed to fetch/i.test(msg)) {
+      throw new Error('Delete blocked by CORS. Ensure your S3 bucket CORS allows DELETE/HEAD/GET/OPTIONS from this origin and AllowedHeaders:*');
+    }
+    if (/AccessDenied|Forbidden|SignatureDoesNotMatch|InvalidAccessKeyId/i.test(msg)) {
+      throw new Error('Access denied deleting object. Verify Cognito IAM role includes s3:DeleteObject on your bucket/prefix.');
+    }
+    throw new Error(`Failed to delete from S3: ${msg}`);
   }
 };
