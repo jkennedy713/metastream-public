@@ -6,7 +6,40 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
 import { extractMetadata } from '@/utils/metadataExtractor';
 import { saveMetadataCompat as saveMetadata } from '@/utils/dynamodbCompat';
+import { detectKeyPhrases } from '@/utils/comprehend';
+import * as XLSX from 'xlsx';
 import { Upload, File, Check, X } from 'lucide-react';
+
+// Helper to extract textual content for Comprehend
+const getTextForComprehend = async (file: File): Promise<string> => {
+  const name = file.name.toLowerCase();
+  const ext = (name.split('.').pop() || '').trim();
+  try {
+    if (['txt', 'csv', 'tsv', 'json'].includes(ext)) {
+      const t = await file.text();
+      return typeof t === 'string' ? t : '';
+    }
+    if (ext === 'xlsx' || ext === 'xls') {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const sheetName = wb.SheetNames?.[0];
+      const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
+      if (sheet) {
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+        const firstRows = (rows || []).slice(0, 50);
+        const asText = firstRows
+          .map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '').trim()).join(' ') : String(r ?? '')))
+          .join('\n');
+        return asText;
+      }
+      return '';
+    }
+    const t = await file.text().catch(() => '');
+    return t || '';
+  } catch {
+    return '';
+  }
+};
 
 const FileUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -72,6 +105,19 @@ const FileUpload: React.FC = () => {
         } catch (e) {
           console.warn('Metadata extraction failed', e);
           meta = { note: 'Metadata extraction failed' };
+        }
+
+        // Detect key phrases from file content for all supported types
+        try {
+          const textForNLP = await getTextForComprehend(file);
+          if (textForNLP && textForNLP.trim()) {
+            const phrases = await detectKeyPhrases(textForNLP);
+            if (phrases?.length) {
+              meta.keyPhrases = phrases;
+            }
+          }
+        } catch (e) {
+          console.warn('Key phrase extraction failed', e);
         }
 
         const record = {
