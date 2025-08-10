@@ -74,7 +74,11 @@ const MetadataTable: React.FC = () => {
   const handleDelete = async (record: MetadataRecord) => {
     setDeletingId(record.id);
     try {
-      const s3Key = (record.metadata && (record.metadata.s3Key || record.metadata.key)) || record.id;
+      const s3KeyRaw = (record.metadata && (record.metadata.s3Key || record.metadata.key)) || record.id;
+      const s3Key = typeof s3KeyRaw === 'string' ? s3KeyRaw.trim() : '';
+      if (!s3Key) {
+        throw new Error('Missing S3 object Key for this record. Ensure metadata contains s3Key or key.');
+      }
       await deleteFromS3(s3Key);
       await deleteMetadataCompat({ id: record.id, filename: record.filename });
 

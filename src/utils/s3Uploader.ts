@@ -148,6 +148,37 @@ export const deleteFromS3 = async (key: string): Promise<void> => {
     },
   });
 
+  // Normalize various key formats (raw key, s3:// URL, https URL)
+  const normalizeS3Key = (input: string): string => {
+    if (!input) return '';
+    let k = input.trim();
+    // s3://bucket/key
+    const s3Match = k.match(/^s3:\/\/([^/]+)\/(.+)$/i);
+    if (s3Match) return s3Match[2];
+    // https URLs
+    try {
+      const url = new URL(k);
+      // path-style: s3.<region>.amazonaws.com/bucket/key
+      if (/^s3[.-][a-z0-9-]+\.amazonaws\.com$/i.test(url.host)) {
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2) return parts.slice(1).join('/');
+      }
+      // virtual-hosted–style: bucket.s3.<region>.amazonaws.com/key
+      if (/\.s3[.-][a-z0-9-]+\.amazonaws\.com$/i.test(url.host)) {
+        return url.pathname.replace(/^\//, '');
+      }
+    } catch {}
+    if (k.startsWith('/')) k = k.slice(1);
+    return k;
+  };
+
+  const normalizedKey = normalizeS3Key(key);
+  if (!normalizedKey) {
+    throw new Error('S3 delete failed: object Key is empty. Could not derive a valid key from provided input.');
+  }
+  // Reassign so downstream uses the normalized key
+  key = normalizedKey;
+
   try {
     // Prefer presigned DELETE URL to minimize CORS header issues
     const delCmd = new DeleteObjectCommand({ Bucket: awsConfig.s3BucketName, Key: key });
