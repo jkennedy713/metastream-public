@@ -11,6 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { deleteFromS3 } from '@/utils/s3Uploader';
 import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
 import { isHiddenMetaKey } from '@/utils/metadataDisplay';
+import { getObjectTextFromS3 } from '@/utils/s3Get';
+import { detectKeyPhrases } from '@/utils/comprehend';
 
 interface MetadataRecord {
   id: string;
@@ -85,6 +87,9 @@ const RecordDetails: React.FC = () => {
   const [record, setRecord] = useState<MetadataRecord | null>(state?.record || null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [contentText, setContentText] = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [phrases, setPhrases] = useState<string[]>([]);
 
   useEffect(() => {
     document.title = record?.filename ? `${record.filename} | Record Details` : 'Record Details';
@@ -112,7 +117,53 @@ const RecordDetails: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
-  const phrases = useMemo(() => (record ? extractKeyPhrases(record) : []), [record]);
+  // Load object content (text-like) from S3 for preview
+  useEffect(() => {
+    const run = async () => {
+      if (!record) { setContentText(null); return; }
+      const meta: any = record.metadata || {};
+      const s3KeyRaw = meta.s3Key || meta.key || record.id;
+      const s3Key = typeof s3KeyRaw === 'string' ? s3KeyRaw.trim() : '';
+      const mime: string = meta.mimeType || '';
+      const canPreview = !mime || /(text|json|csv|xml)/i.test(mime);
+      if (!s3Key || !canPreview) { setContentText(null); return; }
+      setContentLoading(true);
+      try {
+        const res = await getObjectTextFromS3(s3Key);
+        setContentText(res?.text ?? null);
+      } catch (e) {
+        console.warn('S3 content fetch error', e);
+        setContentText(null);
+      } finally {
+        setContentLoading(false);
+      }
+    };
+    run();
+  }, [record]);
+
+  // Build key phrases from metadata and Amazon Comprehend (content-based)
+  useEffect(() => {
+    const run = async () => {
+      if (!record) { setPhrases([]); return; }
+      const meta: any = record.metadata || {};
+      const metaKP: string[] = Array.isArray(meta.keyPhrases) ? meta.keyPhrases.map((x: any) => String(x)).filter(Boolean) : [];
+      let comprehendKP: string[] = [];
+      if (contentText && contentText.trim()) {
+        try {
+          const lang = (meta.language as string) || 'en';
+          comprehendKP = await detectKeyPhrases(contentText, lang);
+        } catch (e) {
+          console.warn('Comprehend detectKeyPhrases failed', e);
+        }
+      }
+      let combined = Array.from(new Set([...metaKP, ...comprehendKP]));
+      if (combined.length === 0) {
+        combined = extractKeyPhrases(record);
+      }
+      setPhrases(combined.slice(0, 20));
+    };
+    run();
+  }, [record, contentText]);
 
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
@@ -198,6 +249,19 @@ const RecordDetails: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div>
+              <h3 className="text-sm font-medium mb-2">File Content</h3>
+              {contentLoading ? (
+                <span className="text-muted-foreground text-sm">Loading content...</span>
+              ) : contentText ? (
+                <div className="rounded-md border p-3 bg-muted/30 max-h-64 overflow-auto">
+                  <pre className="whitespace-pre-wrap break-words text-xs">{contentText}</pre>
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-sm">Content preview unavailable</span>
+              )}
+            </div>
+
             <div>
               <h3 className="text-sm font-medium mb-2">Key Phrases</h3>
               <div className="flex flex-wrap gap-2">
