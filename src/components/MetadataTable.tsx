@@ -13,6 +13,25 @@ import { deleteFromS3 } from '@/utils/s3Uploader';
 import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
 import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
 
+const normalizeName = (input?: string | null): string => {
+  if (!input) return '';
+  let s = String(input).trim();
+  try { s = decodeURIComponent(s); } catch {}
+  const hashIdx = s.indexOf('#');
+  if (hashIdx !== -1) s = s.slice(0, hashIdx);
+  // drop leading path like uploads/
+  s = s.replace(/^uploads\//i, '');
+  return s;
+};
+
+const recordDedupeKey = (r: MetadataRecord): string => {
+  const id = normalizeName(r.id);
+  const filename = normalizeName(r.filename);
+  const metaKey = normalizeName((r as any)?.metadata?.s3Key || (r as any)?.metadata?.key || '');
+  const base = id || metaKey || filename;
+  return `${base}::${(r.uploadTime || '').trim()}`;
+};
+
 const MetadataTable: React.FC = () => {
   const [records, setRecords] = useState<MetadataRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,18 +58,25 @@ const MetadataTable: React.FC = () => {
         );
 
       if (reset) {
-        setRecords(sortByLatest(result.items));
+        const deduped = Array.from(
+          new Map(result.items.map(r => [recordDedupeKey(r), r])).values()
+        );
+        setRecords(sortByLatest(deduped));
       } else {
         setRecords(prev =>
           sortByLatest(
             Array.from(
               new Map(
-                [...prev, ...result.items].map(r => [r.id || `${r.filename}::${r.uploadTime}`, r])
+                [...prev, ...result.items].map(r => [recordDedupeKey(r), r])
               ).values()
             )
           )
         );
       }
+
+      setLastEvaluatedKey(result.lastEvaluatedKey);
+      setHasMore(result.hasMore);
+
       
     } catch (error) {
       toast({
