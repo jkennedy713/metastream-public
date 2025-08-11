@@ -8,9 +8,22 @@ import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
 import { queryMetadata } from '@/utils/dynamodbClient';
 import { Upload, File, Check, X } from 'lucide-react';
 
-// Polling helper for DynamoDB appearance after Lambda processing
+// Polling helper and key/name normalization
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
+const normalizeName = (input: string | undefined | null): string => {
+  if (!input) return '';
+  let s = String(input).trim();
+  try { s = decodeURIComponent(s); } catch {}
+  const hashIdx = s.indexOf('#');
+  if (hashIdx !== -1) s = s.slice(0, hashIdx);
+  return s;
+};
+const equalish = (a: string, b: string): boolean => {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  // handle keys that include prefixes like 'uploads/' vs plain filenames
+  return a.endsWith('/' + b) || b.endsWith('/' + a);
+};
 const FileUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -83,28 +96,38 @@ const FileUpload: React.FC = () => {
           fileInputRef.current.value = '';
         }
 
-        // Poll DynamoDB until Lambda writes the record
-        try {
-          const maxAttempts = 10;
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const res = await queryMetadata({}, 200);
-            const found = res.items.find((r) => {
-              const m: any = r.metadata || {};
-              const s3k: string = (m.s3Key || m.key || '').trim();
-              return r.id === key || s3k === key || r.filename === fname;
-            });
-            if (found) {
-              toast({
-                title: 'Processing Complete',
-                description: 'Your file has been indexed. Check the Dashboard.',
-              });
-              break;
-            }
-            await sleep(3000);
-          }
-        } catch (e) {
-          console.warn('Polling for record failed', e);
-        }
+// Poll DynamoDB until Lambda writes the record
+try {
+  const uploadedKey = normalizeName(key);
+  const uploadedName = normalizeName(fname);
+  const maxAttempts = 10;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await queryMetadata({}, 200);
+    const found = res.items.find((r) => {
+      const m: any = r.metadata || {};
+      const id = normalizeName(r.id);
+      const filename = normalizeName(r.filename);
+      const metaKey = normalizeName((m.s3Key || m.key || m.S3Key || ''));
+      return (
+        equalish(id, uploadedKey) ||
+        equalish(metaKey, uploadedKey) ||
+        equalish(filename, uploadedName) ||
+        equalish(id, uploadedName) ||
+        equalish(metaKey, uploadedName)
+      );
+    });
+    if (found) {
+      toast({
+        title: 'Processing Complete',
+        description: 'Your file has been indexed. Check the Dashboard.',
+      });
+      break;
+    }
+    await sleep(3000);
+  }
+} catch (e) {
+  console.warn('Polling for record failed', e);
+}
       } else {
         toast({
           title: 'Upload Failed',
