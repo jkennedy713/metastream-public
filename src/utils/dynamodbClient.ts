@@ -56,7 +56,7 @@ export const queryMetadata = async (
     const response = await dynamoClient.send(scanCommand);
     
     const items: MetadataRecord[] = (response.Items || []).map(item => ({
-      id: item.id?.S || (item as any).Id?.S || '',
+      id: item.id?.S || (item as any).Id?.S || (item as any).RecordID?.S || '',
       filename: item.filename?.S || (item as any).FileName?.S || '',
       uploadTime: item.uploadTime?.S || (item as any).UploadTime?.S || '',
       metadata: (() => {
