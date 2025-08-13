@@ -1,58 +1,45 @@
-import { DynamoDBClient, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
-import { fetchAuthSession } from 'aws-amplify/auth';
-import { getAWSConfig } from './awsConfig';
+// src/utils/dynamodbDelete.ts
+// DynamoDB delete utilities for table: metadata
+// Key schema: PK=fileName (String), SK=RecordID (String)
 
-export const deleteMetadataCompat = async (params: { id: string; filename?: string }) => {
-  const { id, filename } = params;
-  const awsConfig = getAWSConfig();
-  const session = await fetchAuthSession();
-  const credentials = session.credentials;
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 
-  if (!credentials) throw new Error('Not authenticated');
+// Adjust if you centralize config elsewhere
+const REGION = "us-east-1";
+const TABLE_NAME = "metadata";
 
-  const dynamoClient = new DynamoDBClient({
-    region: awsConfig.region,
-    credentials: {
-      accessKeyId: credentials.accessKeyId!,
-      secretAccessKey: credentials.secretAccessKey!,
-      sessionToken: credentials.sessionToken,
-    },
-  });
+const ddbDoc = DynamoDBDocumentClient.from(
+    new DynamoDBClient({ region: REGION })
+);
 
-  const attempts = [
-    { // Preferred: RecordID
-      key: { RecordID: { S: id } },
-      label: 'RecordID'
-    },
-    { // Alternate: Id
-      key: { Id: { S: id } },
-      label: 'Id'
-    },
-    { // Alternate: id
-      key: { id: { S: id } },
-      label: 'id'
-    },
-    ...(filename ? [{ key: { FileName: { S: filename } }, label: 'FileName' } as const] : []),
-  ];
+/**
+ * Delete by explicit keys (preferred).
+ */
+export async function deleteMetadataByKeys(
+    fileName: string,
+    recordId: string
+): Promise<void> {
+    await ddbDoc.send(
+        new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { fileName, RecordID: recordId },
+        })
+    );
+}
 
-  let lastError: any = null;
-  for (const attempt of attempts) {
-    try {
-      await dynamoClient.send(
-        new DeleteItemCommand({ TableName: awsConfig.dynamoTableName, Key: attempt.key })
-      );
-      return; // success
-    } catch (e) {
-      lastError = e;
-      // Continue to next attempt if ValidationException about key mismatch
-      const msg = (e as any)?.message || '';
-      if (!/key element does not match|ValidationException/i.test(msg)) {
-        break;
-      }
+/**
+ * Convenience helper if your UI passes an object/row.
+ * Expects properties exactly named fileName and RecordID.
+ */
+export async function deleteMetadataFromRow(row: {
+    fileName: string;
+    RecordID: string;
+}): Promise<void> {
+    if (!row?.fileName || !row?.RecordID) {
+        throw new Error(
+            'Delete requires both keys. Missing "fileName" or "RecordID".'
+        );
     }
-  }
-  console.error('DynamoDB delete error:', lastError);
-  throw new Error(
-    lastError instanceof Error ? `Failed to delete metadata: ${lastError.message}` : 'Failed to delete metadata'
-  );
-};
+    await deleteMetadataByKeys(row.fileName, row.RecordID);
+}
