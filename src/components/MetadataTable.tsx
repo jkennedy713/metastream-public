@@ -7,10 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadata, MetadataRecord, QueryFilters } from '@/utils/dynamodbClient';
-import { Search, Download, Calendar, RefreshCw, Trash, Eye } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { deleteFromS3 } from '@/utils/s3Uploader';
-import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
+import { Search, Download, Calendar, RefreshCw, Eye } from 'lucide-react';
 import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
 
 const normalizeName = (input?: string | null): string => {
@@ -38,7 +35,7 @@ const MetadataTable: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<Record<string, any> | undefined>();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -106,26 +103,6 @@ const MetadataTable: React.FC = () => {
     loadData({}, true);
   };
 
-  const handleDelete = async (record: MetadataRecord) => {
-    setDeletingId(record.id);
-    try {
-      const s3KeyRaw = (record.metadata && (record.metadata.s3Key || record.metadata.key)) || record.id;
-      const s3Key = typeof s3KeyRaw === 'string' ? s3KeyRaw.trim() : '';
-      if (!s3Key) {
-        throw new Error('Missing S3 object Key for this record. Ensure metadata contains s3Key or key.');
-      }
-      await deleteFromS3(s3Key);
-      await deleteMetadataCompat({ id: record.id, filename: record.filename });
-
-      setRecords(prev => prev.filter(r => r.id !== record.id));
-      toast({ title: 'Deleted', description: 'File and metadata removed.' });
-    } catch (e: any) {
-      const message = e?.message || (typeof e === 'string' ? e : 'Unknown error');
-      toast({ title: 'Delete failed', description: message, variant: 'destructive' });
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   const handleView = (record: MetadataRecord) => {
     const id = (record.id || '').trim();
@@ -229,33 +206,9 @@ const MetadataTable: React.FC = () => {
                       {renderMetadataPreview(record.metadata)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleView(record)}>
-                          <Eye className="w-4 h-4 mr-2" /> View
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={deletingId === record.id}>
-                              <Trash className="w-4 h-4 mr-2" />
-                              {deletingId === record.id ? 'Deleting...' : 'Delete'}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this file?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will remove the S3 object and its metadata. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(record)}>
-                                Confirm
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleView(record)}>
+                        <Eye className="w-4 h-4 mr-2" /> View Details
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

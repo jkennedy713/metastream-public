@@ -137,91 +137,33 @@ export const queryMetadata = async (
   }
 };
 
-export const saveMetadata = async (record: {
-  id: string;
-  filename: string;
-  uploadTime: string;
-  metadata: Record<string, any>;
-}): Promise<void> => {
-  const awsConfig = getAWSConfig();
-  // Get AWS credentials from Amplify session with retry logic
-  let credentials;
-  let attempts = 0;
-  const maxAttempts = 3;
+// saveMetadata removed per architectural requirements
+// Lambda now handles all metadata writing to DynamoDB
+
+export const waitForMetadata = async (fileName: string, maxWaitMs: number = 30000): Promise<MetadataRecord | null> => {
+  const startTime = Date.now();
+  const pollIntervalMs = 2000; // Check every 2 seconds
   
-  while (!credentials && attempts < maxAttempts) {
+  while (Date.now() - startTime < maxWaitMs) {
     try {
-      const session = await fetchAuthSession({ forceRefresh: attempts > 0 });
-      credentials = session.credentials;
-      const userId = (session as any).userSub || (session as any)?.tokens?.idToken?.payload?.sub || 'unknown-user';
+      // Query for records with this fileName
+      const result = await queryMetadata({ searchTerm: fileName }, 10);
+      const match = result.items.find(item => 
+        item.filename === fileName || 
+        (item.metadata?.originalName === fileName)
+      );
       
-      if (!credentials) {
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } else {
-        // Store userId for later use
-        (saveMetadata as any)._userId = userId;
+      if (match) {
+        return match;
       }
+      
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
     } catch (error) {
-      attempts++;
-      if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        throw error;
-      }
+      console.warn('Error polling for metadata:', error);
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
     }
   }
-
-  if (!credentials) {
-    throw new Error('Not authenticated');
-  }
-
-  const userId = (saveMetadata as any)._userId || 'unknown-user';
-
-  const dynamoClient = new DynamoDBClient({
-    region: awsConfig.region,
-    credentials: {
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-      sessionToken: credentials.sessionToken,
-    },
-  });
-
-  // Ensure metadata includes a valid S3 object key for downstream deletes
-  const normalizedMeta = (() => {
-    const m = { ...(record.metadata || {}) } as Record<string, any>;
-    if (!m.s3Key && typeof m.key === 'string' && m.key.trim()) m.s3Key = m.key.trim();
-    if (!m.s3Key && typeof record.id === 'string' && record.id.trim()) m.s3Key = record.id.trim();
-    if (!m.key && typeof m.s3Key === 'string') m.key = m.s3Key;
-    return m;
-  })();
-
-  const cmd = new PutItemCommand({
-    TableName: awsConfig.dynamoTableName,
-    Item: {
-      // Required partition key for existing table schema
-      FileName: { S: record.filename },
-      // Include capitalized attributes for legacy/alternate schema compatibility
-      UploadTime: { S: record.uploadTime },
-      Id: { S: record.id },
-      UserId: { S: userId },
-      Metadata: { S: JSON.stringify(normalizedMeta) },
-
-      // Keep lowercase attributes for app compatibility
-      id: { S: record.id },
-      filename: { S: record.filename },
-      uploadTime: { S: record.uploadTime },
-      userId: { S: userId },
-      metadata: { S: JSON.stringify(normalizedMeta) },
-    },
-  });
-
-  try {
-    await dynamoClient.send(cmd);
-  } catch (error) {
-    console.error('DynamoDB put error:', error);
-    throw new Error(error instanceof Error ? `Failed to save metadata: ${error.message}` : 'Failed to save metadata');
-  }
+  
+  return null; // Timeout reached
 };
