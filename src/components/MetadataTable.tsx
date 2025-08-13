@@ -7,10 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadata, MetadataRecord, QueryFilters } from '@/utils/dynamodbClient';
-import { Search, Download, Calendar, RefreshCw, Trash, Eye } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { deleteFromS3 } from '@/utils/s3Uploader';
-import { deleteMetadataCompat } from '@/utils/dynamodbDelete';
+import { Search, Download, Calendar, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { isHidden, hideItem, unhideItem } from '@/utils/uiHide';
+import { Switch } from '@/components/ui/switch';
 import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
 
 const normalizeName = (input?: string | null): string => {
@@ -33,14 +32,19 @@ const recordDedupeKey = (r: MetadataRecord): string => {
 };
 
 const MetadataTable: React.FC = () => {
-  const [records, setRecords] = useState<MetadataRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<MetadataRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<Record<string, any> | undefined>();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Filter records based on hidden state
+  const records = allRecords.filter(record => 
+    showHidden || !isHidden({ fileName: record.fileName, RecordID: record.RecordID })
+  );
 
   const loadData = async (filters: QueryFilters = {}, reset: boolean = false) => {
     setLoading(true);
@@ -61,9 +65,9 @@ const MetadataTable: React.FC = () => {
         const deduped = Array.from(
           new Map(result.items.map(r => [recordDedupeKey(r), r])).values()
         );
-        setRecords(sortByLatest(deduped));
+        setAllRecords(sortByLatest(deduped));
       } else {
-        setRecords(prev =>
+        setAllRecords(prev =>
           sortByLatest(
             Array.from(
               new Map(
@@ -106,25 +110,32 @@ const MetadataTable: React.FC = () => {
     loadData({}, true);
   };
 
-  const handleDelete = async (record: MetadataRecord) => {
-    setDeletingId(record.id);
-    try {
-      const s3KeyRaw = (record.metadata && (record.metadata.s3Key || record.metadata.key)) || record.id;
-      const s3Key = typeof s3KeyRaw === 'string' ? s3KeyRaw.trim() : '';
-      if (!s3Key) {
-        throw new Error('Missing S3 object Key for this record. Ensure metadata contains s3Key or key.');
-      }
-      await deleteFromS3(s3Key);
-      await deleteMetadataCompat({ id: record.id, filename: record.filename });
+  const removeFromView = (record: MetadataRecord) => {
+    hideItem({ fileName: record.fileName, RecordID: record.RecordID });
+    // Optimistic UI update by filtering out the hidden record
+    setAllRecords(prev => prev.filter(r => !(r.fileName === record.fileName && r.RecordID === record.RecordID)));
+    
+    toast({ 
+      title: 'Removed from view', 
+      description: 'Item hidden locally. Use "Show hidden" to restore.',
+      action: (
+        <button 
+          onClick={() => {
+            unhideItem({ fileName: record.fileName, RecordID: record.RecordID });
+            // Refresh the data to show the unhidden item
+            loadData({}, true);
+          }}
+          className="text-sm underline"
+        >
+          Undo
+        </button>
+      )
+    });
+  };
 
-      setRecords(prev => prev.filter(r => r.id !== record.id));
-      toast({ title: 'Deleted', description: 'File and metadata removed.' });
-    } catch (e: any) {
-      const message = e?.message || (typeof e === 'string' ? e : 'Unknown error');
-      toast({ title: 'Delete failed', description: message, variant: 'destructive' });
-    } finally {
-      setDeletingId(null);
-    }
+  const restoreItem = (record: MetadataRecord) => {
+    unhideItem({ fileName: record.fileName, RecordID: record.RecordID });
+    toast({ title: 'Restored', description: 'Item is now visible again.' });
   };
 
   const handleView = (record: MetadataRecord) => {
@@ -178,23 +189,30 @@ const MetadataTable: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex space-x-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search by filename or metadata content..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10"
-            />
+        <div className="space-y-4">
+          <div className="flex space-x-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search by filename or metadata content..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={handleSearch} disabled={loading}>
+              Search
+            </Button>
+            <Button onClick={handleRefresh} variant="outline" disabled={loading}>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
-          <Button onClick={handleSearch} disabled={loading}>
-            Search
-          </Button>
-          <Button onClick={handleRefresh} variant="outline" disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+
+          <div className="flex items-center space-x-2">
+            <Switch checked={showHidden} onCheckedChange={setShowHidden} />
+            <label className="text-sm text-muted-foreground">Show hidden items</label>
+          </div>
         </div>
 
         {records.length === 0 && !loading ? (
@@ -233,28 +251,15 @@ const MetadataTable: React.FC = () => {
                         <Button variant="outline" size="sm" onClick={() => handleView(record)}>
                           <Eye className="w-4 h-4 mr-2" /> View
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={deletingId === record.id}>
-                              <Trash className="w-4 h-4 mr-2" />
-                              {deletingId === record.id ? 'Deleting...' : 'Delete'}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this file?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will remove the S3 object and its metadata. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(record)}>
-                                Confirm
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {showHidden && isHidden({ fileName: record.fileName, RecordID: record.RecordID }) ? (
+                          <Button variant="outline" size="sm" onClick={() => restoreItem(record)}>
+                            <Eye className="w-4 h-4 mr-2" /> Unhide
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" onClick={() => removeFromView(record)}>
+                            <EyeOff className="w-4 h-4 mr-2" /> Remove
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

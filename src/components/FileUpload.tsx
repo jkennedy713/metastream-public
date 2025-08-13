@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
-// import { extractMetadata } from '@/utils/metadataExtractor'; // handled by your Lambda
+import { waitForMetadata } from '@/utils/pollForMetadata';
 
 import { Upload, File, Check, X } from 'lucide-react';
 
@@ -12,6 +12,7 @@ const FileUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -65,13 +66,27 @@ const FileUpload: React.FC = () => {
       const result = await uploadToS3(file, setUploadProgress);
 
       if (result.success && result.key) {
+        setProcessing(true);
+        
+        try {
+          // Wait for Lambda to process and write to DynamoDB
+          await waitForMetadata(file.name);
+          
+          toast({
+            title: 'Upload Complete',
+            description: 'File uploaded and processed successfully.',
+          });
+        } catch (processingError) {
+          toast({
+            title: 'Processing Timeout',
+            description: 'File uploaded but processing timed out. Check the dashboard in a moment.',
+            variant: 'destructive',
+          });
+        } finally {
+          setProcessing(false);
+        }
 
-        toast({
-          title: 'Upload Complete',
-          description: 'Processing in Lambda… It will appear on the Dashboard shortly.',
-        });
-
-        // Reset UI immediately after upload
+        // Reset UI after successful processing
         setFile(null);
         setUploadProgress(null);
         if (fileInputRef.current) {
@@ -93,6 +108,7 @@ const FileUpload: React.FC = () => {
       });
     } finally {
       setUploading(false);
+      setProcessing(false);
     }
   };
 
@@ -177,19 +193,26 @@ const FileUpload: React.FC = () => {
               </div>
             )}
 
-            {uploadProgress?.percentage === 100 && (
+            {uploadProgress?.percentage === 100 && !processing && (
               <div className="flex items-center space-x-2 text-green-600">
                 <Check className="w-4 h-4" />
                 <span className="text-sm">Upload complete!</span>
               </div>
             )}
 
+            {processing && (
+              <div className="flex items-center space-x-2 text-blue-600">
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Processing...</span>
+              </div>
+            )}
+
             <Button
               onClick={handleUpload}
-              disabled={uploading}
+              disabled={uploading || processing}
               className="w-full"
             >
-              {uploading ? 'Uploading...' : 'Upload File'}
+              {uploading ? 'Uploading...' : processing ? 'Processing...' : 'Upload File'}
             </Button>
           </div>
         )}

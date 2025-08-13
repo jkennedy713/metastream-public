@@ -1,4 +1,5 @@
-import { DynamoDBClient, ScanCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { getAWSConfig } from './awsConfig';
 
@@ -8,6 +9,8 @@ export interface MetadataRecord {
   uploadTime: string;
   metadata: Record<string, any>;
   userId: string;
+  fileName: string;
+  RecordID: string;
 }
 
 export interface QueryFilters {
@@ -79,6 +82,8 @@ export const queryMetadata = async (
     const items: MetadataRecord[] = (response.Items || []).map(item => ({
       id: item.id?.S || (item as any).Id?.S || (item as any).RecordID?.S || '',
       filename: item.filename?.S || (item as any).FileName?.S || '',
+      fileName: item.filename?.S || (item as any).FileName?.S || '',
+      RecordID: item.id?.S || (item as any).Id?.S || (item as any).RecordID?.S || '',
       uploadTime: item.uploadTime?.S || (item as any).UploadTime?.S || '',
       metadata: (() => {
         const base = item.metadata
@@ -137,91 +142,4 @@ export const queryMetadata = async (
   }
 };
 
-export const saveMetadata = async (record: {
-  id: string;
-  filename: string;
-  uploadTime: string;
-  metadata: Record<string, any>;
-}): Promise<void> => {
-  const awsConfig = getAWSConfig();
-  // Get AWS credentials from Amplify session with retry logic
-  let credentials;
-  let attempts = 0;
-  const maxAttempts = 3;
-  
-  while (!credentials && attempts < maxAttempts) {
-    try {
-      const session = await fetchAuthSession({ forceRefresh: attempts > 0 });
-      credentials = session.credentials;
-      const userId = (session as any).userSub || (session as any)?.tokens?.idToken?.payload?.sub || 'unknown-user';
-      
-      if (!credentials) {
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } else {
-        // Store userId for later use
-        (saveMetadata as any)._userId = userId;
-      }
-    } catch (error) {
-      attempts++;
-      if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  if (!credentials) {
-    throw new Error('Not authenticated');
-  }
-
-  const userId = (saveMetadata as any)._userId || 'unknown-user';
-
-  const dynamoClient = new DynamoDBClient({
-    region: awsConfig.region,
-    credentials: {
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-      sessionToken: credentials.sessionToken,
-    },
-  });
-
-  // Ensure metadata includes a valid S3 object key for downstream deletes
-  const normalizedMeta = (() => {
-    const m = { ...(record.metadata || {}) } as Record<string, any>;
-    if (!m.s3Key && typeof m.key === 'string' && m.key.trim()) m.s3Key = m.key.trim();
-    if (!m.s3Key && typeof record.id === 'string' && record.id.trim()) m.s3Key = record.id.trim();
-    if (!m.key && typeof m.s3Key === 'string') m.key = m.s3Key;
-    return m;
-  })();
-
-  const cmd = new PutItemCommand({
-    TableName: awsConfig.dynamoTableName,
-    Item: {
-      // Required partition key for existing table schema
-      FileName: { S: record.filename },
-      // Include capitalized attributes for legacy/alternate schema compatibility
-      UploadTime: { S: record.uploadTime },
-      Id: { S: record.id },
-      UserId: { S: userId },
-      Metadata: { S: JSON.stringify(normalizedMeta) },
-
-      // Keep lowercase attributes for app compatibility
-      id: { S: record.id },
-      filename: { S: record.filename },
-      uploadTime: { S: record.uploadTime },
-      userId: { S: userId },
-      metadata: { S: JSON.stringify(normalizedMeta) },
-    },
-  });
-
-  try {
-    await dynamoClient.send(cmd);
-  } catch (error) {
-    console.error('DynamoDB put error:', error);
-    throw new Error(error instanceof Error ? `Failed to save metadata: ${error.message}` : 'Failed to save metadata');
-  }
-};
+// Client-side metadata saving removed - handled by S3->Lambda->DynamoDB flow

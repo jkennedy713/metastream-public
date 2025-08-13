@@ -15,6 +15,7 @@
     "@aws-sdk/client-comprehend": "^3.864.0",
     "@aws-sdk/client-dynamodb": "^3.862.0",
     "@aws-sdk/client-s3": "^3.862.0",
+    "@aws-sdk/lib-dynamodb": "^3.864.0",
     "@aws-sdk/s3-request-presigner": "^3.864.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
