@@ -64,6 +64,9 @@ const Signup: React.FC = () => {
         password,
       });
 
+      // Wait a moment for the session to fully establish
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       toast({
         title: 'Account Created',
         description: 'Welcome! Your account has been created and you are now signed in.',

@@ -28,9 +28,30 @@ export const queryMetadata = async (
 }> => {
   try {
     const awsConfig = getAWSConfig();
-    // Get AWS credentials from Amplify session
-    const session = await fetchAuthSession();
-    const credentials = session.credentials;
+    // Get AWS credentials from Amplify session with retry logic
+    let credentials;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (!credentials && attempts < maxAttempts) {
+      try {
+        const session = await fetchAuthSession({ forceRefresh: attempts > 0 });
+        credentials = session.credentials;
+        if (!credentials) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          }
+        }
+      } catch (error) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          throw error;
+        }
+      }
+    }
     
     if (!credentials) {
       throw new Error('Not authenticated');
@@ -123,14 +144,41 @@ export const saveMetadata = async (record: {
   metadata: Record<string, any>;
 }): Promise<void> => {
   const awsConfig = getAWSConfig();
-  // Get AWS credentials from Amplify session
-  const session = await fetchAuthSession();
-  const credentials = session.credentials;
-  const userId = (session as any).userSub || (session as any)?.tokens?.idToken?.payload?.sub || 'unknown-user';
+  // Get AWS credentials from Amplify session with retry logic
+  let credentials;
+  let attempts = 0;
+  const maxAttempts = 3;
+  
+  while (!credentials && attempts < maxAttempts) {
+    try {
+      const session = await fetchAuthSession({ forceRefresh: attempts > 0 });
+      credentials = session.credentials;
+      const userId = (session as any).userSub || (session as any)?.tokens?.idToken?.payload?.sub || 'unknown-user';
+      
+      if (!credentials) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } else {
+        // Store userId for later use
+        (saveMetadata as any)._userId = userId;
+      }
+    } catch (error) {
+      attempts++;
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        throw error;
+      }
+    }
+  }
 
   if (!credentials) {
     throw new Error('Not authenticated');
   }
+
+  const userId = (saveMetadata as any)._userId || 'unknown-user';
 
   const dynamoClient = new DynamoDBClient({
     region: awsConfig.region,
