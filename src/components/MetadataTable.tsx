@@ -4,11 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadata, MetadataRecord, QueryFilters } from '@/utils/dynamodbClient';
-import { Search, Download, Calendar, RefreshCw, Eye } from 'lucide-react';
+import { Search, Download, Calendar, RefreshCw, Eye, EyeOff, Undo2 } from 'lucide-react';
 import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
+import { isHidden, hideItem, unhideItem } from '@/utils/uiHide';
 
 const normalizeName = (input?: string | null): string => {
   if (!input) return '';
@@ -35,7 +38,7 @@ const MetadataTable: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<Record<string, any> | undefined>();
-  
+  const [showHidden, setShowHidden] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -98,11 +101,63 @@ const MetadataTable: React.FC = () => {
     loadData(filters, true);
   };
 
+  const removeFromView = (record: MetadataRecord) => {
+    const fileName = record.filename || '';
+    const RecordID = record.id || '';
+    
+    hideItem({ fileName, RecordID });
+    
+    // Optimistic UI: remove from current view immediately
+    setRecords(prev => prev.filter(r => r.id !== record.id));
+    
+    // Show toast with undo option
+    toast({
+      title: 'Item Hidden',
+      description: `${fileName} has been hidden from view`,
+      action: (
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => undoHide(record)}
+          className="ml-2"
+        >
+          <Undo2 className="w-3 h-3 mr-1" />
+          Undo
+        </Button>
+      ),
+    });
+  };
+
+  const undoHide = (record: MetadataRecord) => {
+    const fileName = record.filename || '';
+    const RecordID = record.id || '';
+    
+    unhideItem({ fileName, RecordID });
+    
+    // Re-add to current view
+    setRecords(prev => {
+      const exists = prev.some(r => r.id === record.id);
+      if (exists) return prev;
+      return [...prev, record].sort(
+        (a, b) => new Date(b.uploadTime).getTime() - new Date(a.uploadTime).getTime()
+      );
+    });
+    
+    toast({
+      title: 'Item Restored',
+      description: `${fileName} is now visible again`,
+    });
+  };
+
+  const handleUnhide = (record: MetadataRecord) => {
+    undoHide(record);
+  };
+
+
   const handleRefresh = () => {
     setSearchTerm('');
     loadData({}, true);
   };
-
 
   const handleView = (record: MetadataRecord) => {
     const id = (record.id || '').trim();
@@ -143,6 +198,15 @@ const MetadataTable: React.FC = () => {
       </div>
     );
   };
+
+  // Filter records based on showHidden toggle
+  const visibleRecords = showHidden 
+    ? records 
+    : records.filter(record => !isHidden({ 
+        fileName: record.filename || '', 
+        RecordID: record.id || '' 
+      }));
+
   return (
     <Card>
       <CardHeader>
@@ -174,12 +238,28 @@ const MetadataTable: React.FC = () => {
           </Button>
         </div>
 
-        {records.length === 0 && !loading ? (
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-hidden"
+            checked={showHidden}
+            onCheckedChange={setShowHidden}
+          />
+          <Label htmlFor="show-hidden" className="text-sm">
+            Show hidden items ({records.length - visibleRecords.length} hidden)
+          </Label>
+        </div>
+
+        {visibleRecords.length === 0 && !loading ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No metadata yet</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {showHidden ? 'No metadata yet' : 'No visible metadata'}
+            </h3>
             <p className="text-muted-foreground">
-              Upload some files to see their processed metadata here
+              {showHidden 
+                ? 'Upload some files to see their processed metadata here'
+                : 'All items are hidden or no files uploaded yet'
+              }
             </p>
           </div>
         ) : (
@@ -190,28 +270,64 @@ const MetadataTable: React.FC = () => {
                   <TableHead>File Name</TableHead>
                   <TableHead>Upload Time</TableHead>
                   <TableHead>Preview</TableHead>
-                  <TableHead className="w-[220px]">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {records.map((record) => (
-                  <TableRow key={record.id || `${record.filename}-${record.uploadTime}`}>
-                    <TableCell className="font-medium">
-                      {record.filename}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(record.uploadTime)}
-                    </TableCell>
-                    <TableCell>
-                      {renderMetadataPreview(record.metadata)}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => handleView(record)}>
-                        <Eye className="w-4 h-4 mr-2" /> View Details
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {visibleRecords.map((record) => {
+                  const isRecordHidden = isHidden({ 
+                    fileName: record.filename || '', 
+                    RecordID: record.id || '' 
+                  });
+                  
+                  return (
+                    <TableRow 
+                      key={record.id || `${record.filename}-${record.uploadTime}`}
+                      className={isRecordHidden && showHidden ? 'opacity-60 bg-muted/20' : ''}
+                    >
+                      <TableCell className="font-medium">
+                        {record.filename}
+                        {isRecordHidden && showHidden && (
+                          <span className="ml-2 text-xs text-muted-foreground">(hidden)</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(record.uploadTime)}
+                      </TableCell>
+                      <TableCell>
+                        {renderMetadataPreview(record.metadata)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleView(record)}>
+                            <Eye className="w-4 h-4 mr-2" /> View Details
+                          </Button>
+                          
+                          {isRecordHidden && showHidden ? (
+                            <Button 
+                              variant="secondary" 
+                              size="sm" 
+                              onClick={() => handleUnhide(record)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Unhide
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => removeFromView(record)}
+                              title="Remove from view (no data is deleted)"
+                            >
+                              <EyeOff className="w-4 h-4 mr-2" />
+                              Hide
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
