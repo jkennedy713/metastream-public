@@ -12,3 +12,11 @@ Metastream is a **serverless AWS-based pipeline** that ingests files, enriches m
 ## 🛠 Stack
 - **Frontend**: React (Vite, TypeScript, Tailwind), AWS Amplify Hosting
 - **Backend**: S3, Lambda, DynamoDB, Comprehend, Cognito, CloudWatch
+
+## 📦 Setup
+```bash
+git clone https://github.com/jkennedy713/metastream-public.git
+cd metastream-public
+npm install
+cp .env.example .env # Fill with AWS resource values
+npm run dev
