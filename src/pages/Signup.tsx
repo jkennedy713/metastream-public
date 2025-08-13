@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { signUp, confirmSignUp } from 'aws-amplify/auth';
+import { signUp, signIn } from 'aws-amplify/auth';
 import { UserPlus } from 'lucide-react';
 
 const Signup: React.FC = () => {
@@ -14,9 +14,7 @@ const Signup: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [confirmationCode, setConfirmationCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'signup' | 'confirm'>('signup');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -47,6 +45,7 @@ const Signup: React.FC = () => {
     setLoading(true);
 
     try {
+      // Create account without verification
       await signUp({
         username: email,
         password,
@@ -59,42 +58,23 @@ const Signup: React.FC = () => {
         },
       });
 
-      setStep('confirm');
+      // Automatically sign in the user
+      await signIn({
+        username: email,
+        password,
+      });
+
       toast({
         title: 'Account Created',
-        description: 'Please check your email or SMS for a confirmation code.',
+        description: 'Welcome! Your account has been created and you are now signed in.',
       });
+
+      // Navigate to dashboard
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: 'Sign Up Failed',
         description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      await confirmSignUp({
-        username: email,
-        confirmationCode,
-      });
-      
-      toast({
-        title: 'Account Confirmed',
-        description: 'Your account has been confirmed. You can now sign in.',
-      });
-      
-      navigate('/login');
-    } catch (error: any) {
-      toast({
-        title: 'Confirmation Failed',
-        description: error.message || 'Please check your confirmation code.',
         variant: 'destructive',
       });
     } finally {
@@ -118,101 +98,78 @@ const Signup: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <UserPlus className="w-5 h-5" />
-              <span>{step === 'signup' ? 'Create Account' : 'Confirm Account'}</span>
+              <span>Create Account</span>
             </CardTitle>
             <CardDescription>
-              {step === 'signup'
-                ? 'Create your account to start analyzing datasets'
-                : 'Enter the confirmation code sent to your email'
-              }
+              Create your account to start analyzing datasets
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {step === 'signup' ? (
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full name</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+15551234567"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+15551234567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Creating Account...' : 'Create Account'}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleConfirm} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Confirmation Code</Label>
-                  <Input
-                    id="code"
-                    type="text"
-                    placeholder="Enter confirmation code"
-                    value={confirmationCode}
-                    onChange={(e) => setConfirmationCode(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Confirming...' : 'Confirm Account'}
-                </Button>
-              </form>
-            )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creating Account...' : 'Create Account'}
+              </Button>
+            </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
