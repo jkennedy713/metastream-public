@@ -11,6 +11,7 @@ import { UserPlus } from 'lucide-react';
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,17 @@ const Signup: React.FC = () => {
       return;
     }
 
+    // Validate E.164 phone number format required by Cognito (e.g., +15551234567)
+    const e164 = phone.trim();
+    const phoneValid = /^\+[1-9]\d{1,14}$/.test(e164);
+    if (!phoneValid) {
+      toast({
+        title: 'Invalid phone number',
+        description: 'Use E.164 format, e.g., +15551234567.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
 
@@ -40,6 +52,7 @@ const Signup: React.FC = () => {
         options: {
           userAttributes: {
             email,
+            phone_number: e164,
             name: fullName.trim(),
           },
         },
@@ -117,6 +130,17 @@ const Signup: React.FC = () => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+15551234567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
