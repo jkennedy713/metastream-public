@@ -1,7 +1,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
-const REGION = import.meta.env.VITE_AWS_REGION as string;
+const REGION = import.meta.env.VITE_REGION as string;
 const TABLE  = import.meta.env.VITE_DYNAMODB_TABLE_NAME as string;
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
