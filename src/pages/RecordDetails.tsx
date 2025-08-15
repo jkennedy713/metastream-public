@@ -93,9 +93,6 @@ const RecordDetails: React.FC = () => {
 
   const [record, setRecord] = useState<MetadataRecord | null>(state?.record || null);
   const [loading, setLoading] = useState(false);
-  const [contentText, setContentText] = useState<string | null>(null);
-  const [contentLoading, setContentLoading] = useState(false);
-  const [phrases, setPhrases] = useState<string[]>([]);
 
   useEffect(() => {
     document.title = record?.filename ? `${record.filename} | Record Details` : 'Record Details';
@@ -123,53 +120,6 @@ const RecordDetails: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
-  // Load object content (text-like) from S3 for preview
-  useEffect(() => {
-    const run = async () => {
-      if (!record) { setContentText(null); return; }
-      const meta: any = record.metadata || {};
-      const s3KeyRaw = meta.s3Key || meta.key || record.id;
-      const s3Key = typeof s3KeyRaw === 'string' ? s3KeyRaw.trim() : '';
-      const mime: string = meta.mimeType || '';
-      const canPreview = !mime || /(text|json|csv|xml)/i.test(mime);
-      if (!s3Key || !canPreview) { setContentText(null); return; }
-      setContentLoading(true);
-      try {
-        const res = await getObjectTextFromS3(s3Key);
-        setContentText(res?.text ?? null);
-      } catch (e) {
-        console.warn('S3 content fetch error', e);
-        setContentText(null);
-      } finally {
-        setContentLoading(false);
-      }
-    };
-    run();
-  }, [record]);
-
-  // Build key phrases from metadata and Amazon Comprehend (content-based)
-  useEffect(() => {
-    const run = async () => {
-      if (!record) { setPhrases([]); return; }
-      const meta: any = record.metadata || {};
-      const metaKP: string[] = Array.isArray(meta.keyPhrases) ? meta.keyPhrases.map((x: any) => String(x)).filter(Boolean) : [];
-      let comprehendKP: string[] = [];
-      if (contentText && contentText.trim()) {
-        try {
-          const lang = (meta.language as string) || 'en';
-          comprehendKP = await detectKeyPhrases(contentText, lang);
-        } catch (e) {
-          console.warn('Comprehend detectKeyPhrases failed', e);
-        }
-      }
-      let combined = Array.from(new Set([...metaKP, ...comprehendKP]));
-      if (combined.length === 0) {
-        combined = extractKeyPhrases(record);
-      }
-      setPhrases(combined.slice(0, 20));
-    };
-    run();
-  }, [record, contentText]);
 
 
   const metaEntries = useMemo(() => {
@@ -177,56 +127,19 @@ const RecordDetails: React.FC = () => {
     const rows: Array<{ k: string; t: string; v: string }> = [];
     const meta = record.metadata || {};
 
-    // Debug: Log available metadata attributes
-    console.log('Available metadata attributes:', Object.keys(meta));
-    console.log('Full metadata object:', meta);
-
-    // Get file type from metadata
-    const fileType = (meta.Type || meta.type || '').toLowerCase();
-
     // Base field
     rows.push({ k: 'File Name', t: toTypeTag(record.filename), v: flattenValue(record.filename) });
 
-    // File type specific attribute order and labeling
-    const getAttributeOrder = (type: string): Array<{ key: string; label: string }> => {
-      const orders = {
-        tsv: [
-          { key: 'Content', label: 'Content' },
-          { key: 'ColCount', label: 'Column Count' },
-          { key: 'ContentLength', label: 'Content Length' },
-          { key: 'RowCount', label: 'Row Count' }
-        ],
-        json: [
-          { key: 'KeyPhrases', label: 'Key Phrases' },
-          { key: 'Content', label: 'Content' },
-          { key: 'ContentLength', label: 'Content Length' }
-        ],
-        csv: [
-          { key: 'KeyPhrases', label: 'Key Phrases' },
-          { key: 'Content', label: 'Content' },
-          { key: 'ColCount', label: 'Column Count' },
-          { key: 'ContentLength', label: 'Content Length' },
-          { key: 'RowCount', label: 'Row Count' }
-        ],
-        txt: [
-          { key: 'KeyPhrases', label: 'Key Phrases' },
-          { key: 'Content', label: 'Content' },
-          { key: 'ContentLength', label: 'Content Length' }
-        ],
-        xlsx: [
-          { key: 'KeyPhrases', label: 'Key Phrases' },
-          { key: 'Content', label: 'Content' },
-          { key: 'ColCount', label: 'Column Count' },
-          { key: 'ContentLength', label: 'Content Length' },
-          { key: 'RowCount', label: 'Row Count' }
-        ]
-      };
-      return orders[type] || [];
-    };
+    // Display order: Key Phrases, Content, then type-specific fields
+    const displayOrder = [
+      { key: 'KeyPhrases', label: 'Key Phrases' },
+      { key: 'Content', label: 'Content' },
+      { key: 'ContentLength', label: 'Content Length' },
+      { key: 'ColCount', label: 'Column Count' },
+      { key: 'RowCount', label: 'Row Count' },
+    ];
 
-    // Add attributes in the specified order for this file type
-    const attributeOrder = getAttributeOrder(fileType);
-    attributeOrder.forEach(({ key, label }) => {
+    displayOrder.forEach(({ key, label }) => {
       if (meta[key] !== undefined && meta[key] !== null) {
         let value = meta[key];
         
@@ -268,32 +181,13 @@ const RecordDetails: React.FC = () => {
             <div>
               <h3 className="text-sm font-medium mb-2">Key Phrases</h3>
               <div className="flex flex-wrap gap-2">
-                {phrases.length ? (
-                  phrases.map((p) => (
-                    <Badge key={p} variant="secondary">{p}</Badge>
+                {record?.metadata?.KeyPhrases && Array.isArray(record.metadata.KeyPhrases) ? (
+                  record.metadata.KeyPhrases.map((phrase: string) => (
+                    <Badge key={phrase} variant="secondary">{phrase}</Badge>
                   ))
                 ) : (
                   <span className="text-muted-foreground text-sm">No key phrases available</span>
                 )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium mb-2">Preview</h3>
-              <div className="space-y-1 text-sm">
-                <div>
-                  <span className="font-medium">Type:</span>{' '}
-                  <span className="text-muted-foreground">
-                    {String((record as any)?.metadata?.extension || (record as any)?.metadata?.mimeType || 'Unknown')}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium">Size:</span>{' '}
-                  <span className="text-muted-foreground">
-                    {formatBytes(Number((record as any)?.metadata?.sizeBytes)) ||
-                      ((record as any)?.metadata?.sizeMB ? `${Number((record as any)?.metadata?.sizeMB).toFixed(2)} MB` : 'Unknown')}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -340,18 +234,6 @@ const RecordDetails: React.FC = () => {
               </Table>
             </div>
 
-            <div>
-              <h3 className="text-sm font-medium mb-2">File Content</h3>
-              {contentLoading ? (
-                <span className="text-muted-foreground text-sm">Loading content...</span>
-              ) : contentText ? (
-                <div className="rounded-md border p-3 bg-muted/30 max-h-64 overflow-auto">
-                  <pre className="whitespace-pre-wrap break-words text-xs">{contentText}</pre>
-                </div>
-              ) : (
-                <span className="text-muted-foreground text-sm">Content preview unavailable</span>
-              )}
-            </div>
           </CardContent>
         </Card>
       </div>

@@ -1,4 +1,4 @@
-import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { getAWSConfig } from './awsConfig';
 
@@ -25,40 +25,75 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
     },
   });
 
-  const cmd = new ScanCommand({
+  // Decode filename from route parameter
+  const fileName = decodeURIComponent(id);
+  
+  // Try GetItem first with FileName and RecordID
+  const recordId = `${fileName}#full`;
+  const getItemCmd = new GetItemCommand({
     TableName: awsConfig.dynamoTableName,
-    FilterExpression: '#id = :v OR #Id = :v OR #RecordID = :v',
-    ExpressionAttributeNames: {
-      '#id': 'id',
-      '#Id': 'Id',
-      '#RecordID': 'RecordID',
+    Key: {
+      FileName: { S: fileName },
+      RecordID: { S: recordId },
     },
+  });
+
+  try {
+    const getItemRes = await dynamoClient.send(getItemCmd);
+    if (getItemRes.Item) {
+      const item = getItemRes.Item;
+      const mapped = mapDynamoItem(item);
+      return mapped;
+    }
+  } catch (e) {
+    console.warn('GetItem failed, falling back to Query:', e);
+  }
+
+  // Fallback: Query on FileName and take the single item
+  const queryCmd = new QueryCommand({
+    TableName: awsConfig.dynamoTableName,
+    KeyConditionExpression: 'FileName = :fileName',
     ExpressionAttributeValues: {
-      ':v': { S: id },
+      ':fileName': { S: fileName },
     },
     Limit: 1,
   });
 
-  const res = await dynamoClient.send(cmd);
-  const item = (res.Items || [])[0];
+  const queryRes = await dynamoClient.send(queryCmd);
+  const item = (queryRes.Items || [])[0];
   if (!item) return null;
 
-  const baseMeta = item.metadata
-    ? JSON.parse((item as any).metadata?.S || '{}')
-    : (item as any).Metadata
-    ? JSON.parse((item as any).Metadata?.S || '{}')
-    : {};
-  const keyPhrases = (item as any).KeyPhrases?.L
-    ? ((item as any).KeyPhrases.L as Array<{ S?: string }>).map(x => x.S || '').filter(Boolean)
-    : undefined;
+  return mapDynamoItem(item);
+};
 
-  const mapped: MetadataRecord = {
-    id: (item as any).id?.S || (item as any).Id?.S || (item as any).RecordID?.S || '',
-    filename: (item as any).filename?.S || (item as any).FileName?.S || '',
-    uploadTime: (item as any).uploadTime?.S || (item as any).UploadTime?.S || '',
-    metadata: keyPhrases && keyPhrases.length ? { ...baseMeta, keyPhrases } : baseMeta,
-    userId: (item as any).userId?.S || (item as any).UserId?.S || '',
+const mapDynamoItem = (item: any): MetadataRecord => {
+  // Extract all DynamoDB attributes directly
+  const metadata: Record<string, any> = {};
+  
+  // Map DynamoDB types to JavaScript values
+  Object.entries(item).forEach(([key, value]: [string, any]) => {
+    if (key === 'FileName' || key === 'RecordID' || key === 'UserId') return; // Skip primary keys
+    
+    if (value.S !== undefined) {
+      metadata[key] = value.S;
+    } else if (value.N !== undefined) {
+      metadata[key] = Number(value.N);
+    } else if (value.L !== undefined) {
+      metadata[key] = value.L.map((item: any) => item.S || item.N || item);
+    } else if (value.M !== undefined) {
+      metadata[key] = Object.fromEntries(
+        Object.entries(value.M).map(([k, v]: [string, any]) => [k, v.S || v.N || v])
+      );
+    } else if (value.BOOL !== undefined) {
+      metadata[key] = value.BOOL;
+    }
+  });
+
+  return {
+    id: item.RecordID?.S || item.FileName?.S || '',
+    filename: item.FileName?.S || '',
+    uploadTime: '', // Hidden per requirements
+    metadata,
+    userId: item.UserId?.S || '',
   };
-
-  return mapped;
 };
