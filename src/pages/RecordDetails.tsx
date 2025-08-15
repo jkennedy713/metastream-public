@@ -121,12 +121,8 @@ const RecordDetails: React.FC = () => {
 
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
-    console.log('Record for details page:', record);
-    
     const rows: Array<{ k: string; t: string; v: string }> = [];
     const meta = record.metadata || {};
-    console.log('Metadata object:', meta);
-    console.log('Available metadata keys:', Object.keys(meta));
 
     // Display ALL DynamoDB attributes in logical order
     const displayOrder = [
@@ -146,8 +142,6 @@ const RecordDetails: React.FC = () => {
       ].includes(key))
     ];
 
-    console.log('Display order:', displayOrder);
-
     displayOrder.forEach((key) => {
       if (meta[key] !== undefined && meta[key] !== null) {
         let value = meta[key];
@@ -164,12 +158,10 @@ const RecordDetails: React.FC = () => {
           case 'RowCount': label = 'Row Count'; break;
         }
         
-        console.log(`Adding row: ${label} = ${value}`);
         rows.push({ k: label, t: toTypeTag(value), v: flattenValue(value) });
       }
     });
 
-    console.log('Final rows for table:', rows);
     return rows;
   }, [record]);
 

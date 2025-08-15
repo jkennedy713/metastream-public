@@ -67,8 +67,6 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
 };
 
 const mapDynamoItem = (item: any): MetadataRecord => {
-  console.log('Raw DynamoDB item:', item);
-  
   // Map DynamoDB types to JavaScript values and include ALL attributes
   const metadata: Record<string, any> = {};
   
@@ -88,16 +86,11 @@ const mapDynamoItem = (item: any): MetadataRecord => {
     }
   });
 
-  console.log('Processed metadata:', metadata);
-
-  const result = {
+  return {
     id: metadata.RecordID || metadata.FileName || '',
     filename: metadata.FileName || '',
     uploadTime: '', // Hidden per requirements
     metadata, // Now includes ALL DynamoDB attributes including RecordID, Content, ContentLength, KeyPhrases, Type, etc.
     userId: metadata.UserId || '',
   };
-  
-  console.log('Final mapped record:', result);
-  return result;
 };
