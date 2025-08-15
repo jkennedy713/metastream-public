@@ -11,7 +11,7 @@ import Upload from "./pages/Upload";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
-import RecordDetails from "./pages/RecordDetails";
+import Record from "./pages/Record";
 import { getAWSConfig } from "./utils/awsConfig";
 
 getAWSConfig();
@@ -32,7 +32,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<Upload />} />
-            <Route path="/record/:id" element={<RecordDetails />} />
+            <Route path="/record/:id" element={<Record />} />
             <Route path="/record" element={<Navigate to="/dashboard" replace />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
