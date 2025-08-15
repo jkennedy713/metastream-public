@@ -239,16 +239,6 @@ const RecordDetails: React.FC = () => {
       }
     });
 
-    // If no specific attributes found, show all available attributes (fallback)
-    if (rows.length === 1) { // Only filename was added
-      console.log('No specific attributes found, showing all available metadata');
-      Object.entries(meta).forEach(([key, value]) => {
-        if (!isHiddenMetaKey(key)) {
-          rows.push({ k: key, t: toTypeTag(value), v: flattenValue(value) });
-        }
-      });
-    }
-
     return rows;
   }, [record]);
 
