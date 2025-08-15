@@ -135,34 +135,20 @@ const MetadataTable: React.FC = () => {
   };
 
   const handleView = (record: MetadataRecord) => {
-    const id = (record.id || '').trim();
-    if (!id) {
-      toast({ title: 'Cannot open', description: 'Record is missing an ID', variant: 'destructive' });
+    const fileName = (record.filename || '').trim();
+    if (!fileName) {
+      toast({ title: 'Cannot open', description: 'Record is missing a filename', variant: 'destructive' });
       return;
     }
-    navigate(`/record/${encodeURIComponent(id)}`, { state: { record } });
+    navigate(`/record/${encodeURIComponent(fileName)}`);
   };
 
 
   const renderMetadataPreview = (metadata: Record<string, any>) => {
-    const ext = String((metadata?.extension ?? '') || '').trim();
-    const mime = String((metadata?.mimeType ?? '') || '').trim();
-    const type = ext || mime || 'Unknown';
-    const sizeBytes = Number((metadata as any)?.sizeBytes);
-    const sizeMB = Number((metadata as any)?.sizeMB);
-    const size = !isNaN(sizeBytes) && sizeBytes > 0
-      ? (() => {
-          const units = ['B','KB','MB','GB','TB'];
-          let b = sizeBytes;
-          let i = 0;
-          while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
-          return `${b.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
-        })()
-      : (!isNaN(sizeMB) && sizeMB > 0 ? `${sizeMB.toFixed(2)} MB` : 'Unknown');
+    const type = metadata?.Type || 'Unknown';
     return (
       <div className="space-y-1 text-xs">
         <div><span className="font-medium">Type:</span> <span className="text-muted-foreground">{type}</span></div>
-        <div><span className="font-medium">Size:</span> <span className="text-muted-foreground">{size}</span></div>
       </div>
     );
   };
@@ -218,7 +204,7 @@ const MetadataTable: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>File Name</TableHead>
-                  <TableHead>Preview</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="w-[220px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
