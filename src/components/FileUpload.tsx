@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { uploadToS3, validateFile, UploadProgress } from '@/utils/s3Uploader';
-
+import { waitForMetadata } from '@/utils/pollForMetadata';
 
 import { Upload, File, Check, X } from 'lucide-react';
 
@@ -68,11 +68,23 @@ const FileUpload: React.FC = () => {
       if (result.success && result.key) {
         setProcessing(true);
         
-        toast({
-          title: 'Upload Complete',
-          description: 'File uploaded successfully. Processing will continue in the background.',
-        });
-        setProcessing(false);
+        try {
+          // Wait for Lambda to process and write to DynamoDB
+          await waitForMetadata(file.name);
+          
+          toast({
+            title: 'Upload Complete',
+            description: 'File uploaded and processed successfully.',
+          });
+        } catch (processingError) {
+          toast({
+            title: 'Processing Timeout',
+            description: 'File uploaded but processing timed out. Check the dashboard in a moment.',
+            variant: 'destructive',
+          });
+        } finally {
+          setProcessing(false);
+        }
 
         // Reset UI after successful processing
         setFile(null);
