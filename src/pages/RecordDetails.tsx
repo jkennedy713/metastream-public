@@ -120,33 +120,48 @@ const RecordDetails: React.FC = () => {
 
 
   const metaEntries = useMemo(() => {
-    if (!record) return [] as Array<{ k: string; t: string; v: string }>;
-    const rows: Array<{ k: string; t: string; v: string }> = [];
+    if (!record) return [] as Array<{ k: string; v: string }>;
+    const rows: Array<{ k: string; v: string }> = [];
     const meta = record.metadata || {};
 
-    // Base field
-    rows.push({ k: 'File Name', t: toTypeTag(record.filename), v: flattenValue(record.filename) });
-
-    // Display order: Key Phrases, Content, then type-specific fields
+    // Display specific attributes in order
     const displayOrder = [
-      { key: 'KeyPhrases', label: 'Key Phrases' },
+      { key: 'FileName', label: 'FileName', value: record.filename },
+      { key: 'KeyPhrases', label: 'KeyPhrases' },
       { key: 'Content', label: 'Content' },
-      { key: 'ContentLength', label: 'Content Length' },
-      { key: 'ColCount', label: 'Column Count' },
-      { key: 'RowCount', label: 'Row Count' },
+      { key: 'RecordID', label: 'RecordID' },
+      { key: 'ColCount', label: 'ColCount' },
+      { key: 'RowCount', label: 'RowCount' },
+      { key: 'ContentLength', label: 'ContentLength' },
     ];
 
-    displayOrder.forEach(({ key, label }) => {
-      if (meta[key] !== undefined && meta[key] !== null) {
-        let value = meta[key];
+    displayOrder.forEach(({ key, label, value }) => {
+      let displayValue;
+      
+      if (value !== undefined) {
+        // Use provided value (for FileName)
+        displayValue = flattenValue(value);
+      } else if (meta[key] !== undefined && meta[key] !== null) {
+        let metaValue = meta[key];
         
         // Special handling for KeyPhrases - display as comma-separated text
-        if (key === 'KeyPhrases' && Array.isArray(value)) {
-          value = value.join(', ');
+        if (key === 'KeyPhrases' && Array.isArray(metaValue)) {
+          metaValue = metaValue.join(', ');
         }
         
-        rows.push({ k: label, t: toTypeTag(value), v: flattenValue(value) });
+        displayValue = flattenValue(metaValue);
+      } else if (key === 'ColCount' || key === 'RowCount') {
+        // Show N/A for missing ColCount and RowCount
+        displayValue = 'N/A';
+      } else if (key === 'FileName' || key === 'RecordID') {
+        // Always show these even if missing
+        displayValue = flattenValue(meta[key] || '');
+      } else {
+        // Skip other missing attributes
+        return;
       }
+      
+      rows.push({ k: label, v: displayValue });
     });
 
     return rows;
@@ -175,32 +190,18 @@ const RecordDetails: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div>
-              <h3 className="text-sm font-medium mb-2">Key Phrases</h3>
-              <div className="flex flex-wrap gap-2">
-                {record?.metadata?.KeyPhrases && Array.isArray(record.metadata.KeyPhrases) ? (
-                  record.metadata.KeyPhrases.map((phrase: string) => (
-                    <Badge key={phrase} variant="secondary">{phrase}</Badge>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground text-sm">No key phrases available</span>
-                )}
-              </div>
-            </div>
-
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-64">Attribute</TableHead>
-                    <TableHead className="w-28">Type</TableHead>
                     <TableHead>Value</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={2} className="text-center text-muted-foreground py-10">
                         Loading...
                       </TableCell>
                     </TableRow>
@@ -208,21 +209,20 @@ const RecordDetails: React.FC = () => {
                     metaEntries.map((row) => (
                       <TableRow key={row.k}>
                         <TableCell className="font-medium">{row.k}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{row.t}</TableCell>
-                         <TableCell>
-                           {row.k === 'Content' ? (
-                             <div className="max-h-32 overflow-auto">
-                               <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
-                             </div>
-                           ) : (
-                             <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
-                           )}
-                         </TableCell>
+                        <TableCell>
+                          {row.k === 'Content' ? (
+                            <div className="max-h-32 overflow-auto">
+                              <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
+                            </div>
+                          ) : (
+                            <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={2} className="text-center text-muted-foreground py-10">
                         Record not found
                       </TableCell>
                     </TableRow>
