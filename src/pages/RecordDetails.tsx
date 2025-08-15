@@ -177,6 +177,10 @@ const RecordDetails: React.FC = () => {
     const rows: Array<{ k: string; t: string; v: string }> = [];
     const meta = record.metadata || {};
 
+    // Debug: Log available metadata attributes
+    console.log('Available metadata attributes:', Object.keys(meta));
+    console.log('Full metadata object:', meta);
+
     // Get file type from metadata
     const fileType = (meta.Type || meta.type || '').toLowerCase();
 
