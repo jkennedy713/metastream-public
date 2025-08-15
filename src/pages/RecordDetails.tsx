@@ -124,44 +124,38 @@ const RecordDetails: React.FC = () => {
     const rows: Array<{ k: string; v: string }> = [];
     const meta = record.metadata || {};
 
-    // Display specific attributes in order
+    // Always show these rows in this exact order
     const displayOrder = [
-      { key: 'FileName', label: 'FileName', value: record.filename },
-      { key: 'KeyPhrases', label: 'KeyPhrases' },
-      { key: 'Content', label: 'Content' },
-      { key: 'RecordID', label: 'RecordID' },
-      { key: 'ColCount', label: 'ColCount' },
-      { key: 'RowCount', label: 'RowCount' },
-      { key: 'ContentLength', label: 'ContentLength' },
+      'FileName',
+      'KeyPhrases',
+      'Content',
+      'FileName',
+      'RecordID',
+      'ColCount',
+      'RowCount',
+      'ContentLength',
     ];
 
-    displayOrder.forEach(({ key, label, value }) => {
-      let displayValue;
+    displayOrder.forEach((key) => {
+      let displayValue = '';
       
-      if (value !== undefined) {
-        // Use provided value (for FileName)
-        displayValue = flattenValue(value);
-      } else if (meta[key] !== undefined && meta[key] !== null) {
-        let metaValue = meta[key];
-        
-        // Special handling for KeyPhrases - display as comma-separated text
-        if (key === 'KeyPhrases' && Array.isArray(metaValue)) {
-          metaValue = metaValue.join(', ');
-        }
-        
-        displayValue = flattenValue(metaValue);
+      if (key === 'FileName') {
+        displayValue = flattenValue(record.filename || '');
+      } else if (key === 'RecordID') {
+        displayValue = flattenValue(meta[key] || record.id || '');
       } else if (key === 'ColCount' || key === 'RowCount') {
-        // Show N/A for missing ColCount and RowCount
-        displayValue = 'N/A';
-      } else if (key === 'FileName' || key === 'RecordID') {
-        // Always show these even if missing
-        displayValue = flattenValue(meta[key] || '');
+        displayValue = meta[key] !== undefined && meta[key] !== null ? flattenValue(meta[key]) : 'N/A';
+      } else if (key === 'KeyPhrases') {
+        if (meta[key] && Array.isArray(meta[key])) {
+          displayValue = meta[key].join(', ');
+        } else {
+          displayValue = flattenValue(meta[key] || '');
+        }
       } else {
-        // Skip other missing attributes
-        return;
+        displayValue = flattenValue(meta[key] || '');
       }
       
-      rows.push({ k: label, v: displayValue });
+      rows.push({ k: key, v: displayValue });
     });
 
     return rows;
