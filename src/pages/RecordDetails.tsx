@@ -7,9 +7,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadataById } from '@/utils/dynamodbQueryById';
 import { ArrowLeft } from 'lucide-react';
-import { isHiddenMetaKey } from '@/utils/metadataDisplay';
-import { getObjectTextFromS3 } from '@/utils/s3Get';
-import { detectKeyPhrases } from '@/utils/comprehend';
 
 interface MetadataRecord {
   id: string;
