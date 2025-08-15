@@ -18,8 +18,6 @@ const normalizeName = (input?: string | null): string => {
   try { s = decodeURIComponent(s); } catch {}
   const hashIdx = s.indexOf('#');
   if (hashIdx !== -1) s = s.slice(0, hashIdx);
-  // drop leading path like uploads/
-  s = s.replace(/^uploads\//i, '');
   return s;
 };
 

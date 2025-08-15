@@ -64,7 +64,7 @@ export const uploadToS3 = async (
       },
     });
 
-    const key = `uploads/${Date.now()}-${file.name}`;
+    const key = `${Date.now()}-${file.name}`;
 
     // Use a presigned PUT URL to avoid streaming issues across browsers.
     // Note: We intentionally omit Metadata here to prevent signature/header mismatches.
