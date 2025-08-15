@@ -98,14 +98,17 @@ const RecordDetails: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!record && params.id) {
+        console.log('Loading record for ID:', params.id);
         setLoading(true);
         try {
           const r = await queryMetadataById(params.id);
+          console.log('Query result:', r);
           if (!r) {
             toast({ title: 'Not found', description: 'Record could not be found', variant: 'destructive' });
           }
           setRecord(r);
         } catch (e: any) {
+          console.error('Error loading record:', e);
           const message = e?.message || 'Failed to load record';
           toast({ title: 'Error', description: message, variant: 'destructive' });
         } finally {
@@ -120,9 +123,12 @@ const RecordDetails: React.FC = () => {
 
 
   const metaEntries = useMemo(() => {
+    console.log('Processing record:', record);
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
     const rows: Array<{ k: string; t: string; v: string }> = [];
     const meta = record.metadata || {};
+    console.log('Record metadata:', meta);
+    console.log('All metadata keys:', Object.keys(meta));
 
     // Display ALL DynamoDB attributes in logical order
     const displayOrder = [
@@ -142,7 +148,10 @@ const RecordDetails: React.FC = () => {
       ].includes(key))
     ];
 
+    console.log('Display order:', displayOrder);
+
     displayOrder.forEach((key) => {
+      console.log(`Checking key: ${key}, value:`, meta[key]);
       if (meta[key] !== undefined && meta[key] !== null) {
         let value = meta[key];
         let label = key;
@@ -158,10 +167,12 @@ const RecordDetails: React.FC = () => {
           case 'RowCount': label = 'Row Count'; break;
         }
         
+        console.log(`Adding row: ${label} = ${value}`);
         rows.push({ k: label, t: toTypeTag(value), v: flattenValue(value) });
       }
     });
 
+    console.log('Final rows:', rows);
     return rows;
   }, [record]);
 
