@@ -67,50 +67,33 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
 };
 
 const mapDynamoItem = (item: any): MetadataRecord => {
-  // Map DynamoDB AttributeValue objects to JavaScript values
+  // Extract all DynamoDB attributes directly
   const metadata: Record<string, any> = {};
   
-  Object.entries(item).forEach(([key, attributeValue]: [string, any]) => {
-    // Handle each DynamoDB AttributeValue type directly
-    if (attributeValue.S !== undefined) {
-      metadata[key] = attributeValue.S;
-    } else if (attributeValue.N !== undefined) {
-      metadata[key] = Number(attributeValue.N);
-    } else if (attributeValue.BOOL !== undefined) {
-      metadata[key] = attributeValue.BOOL;
-    } else if (attributeValue.L !== undefined) {
-      // Handle Lists - extract values from each item
-      metadata[key] = attributeValue.L.map((listItem: any) => {
-        if (listItem.S !== undefined) return listItem.S;
-        if (listItem.N !== undefined) return Number(listItem.N);
-        if (listItem.BOOL !== undefined) return listItem.BOOL;
-        return listItem;
-      });
-    } else if (attributeValue.M !== undefined) {
-      // Handle Maps - recursively extract values
-      const mapValue: Record<string, any> = {};
-      Object.entries(attributeValue.M).forEach(([mapKey, mapVal]: [string, any]) => {
-        if (mapVal.S !== undefined) mapValue[mapKey] = mapVal.S;
-        else if (mapVal.N !== undefined) mapValue[mapKey] = Number(mapVal.N);
-        else if (mapVal.BOOL !== undefined) mapValue[mapKey] = mapVal.BOOL;
-        else mapValue[mapKey] = mapVal;
-      });
-      metadata[key] = mapValue;
-    } else if (attributeValue.NULL !== undefined) {
-      metadata[key] = null;
-    } else {
-      // Fallback for any other types
-      metadata[key] = attributeValue;
+  // Map DynamoDB types to JavaScript values
+  Object.entries(item).forEach(([key, value]: [string, any]) => {
+    if (key === 'FileName' || key === 'RecordID' || key === 'UserId') return; // Skip primary keys
+    
+    if (value.S !== undefined) {
+      metadata[key] = value.S;
+    } else if (value.N !== undefined) {
+      metadata[key] = Number(value.N);
+    } else if (value.L !== undefined) {
+      metadata[key] = value.L.map((item: any) => item.S || item.N || item);
+    } else if (value.M !== undefined) {
+      metadata[key] = Object.fromEntries(
+        Object.entries(value.M).map(([k, v]: [string, any]) => [k, v.S || v.N || v])
+      );
+    } else if (value.BOOL !== undefined) {
+      metadata[key] = value.BOOL;
     }
   });
 
-  console.log('Mapped metadata from DynamoDB item:', metadata);
-
   return {
-    id: metadata.RecordID || metadata.FileName || '',
-    filename: metadata.FileName || '',
+    id: item.RecordID?.S || item.FileName?.S || '',
+    filename: item.FileName?.S || '',
     uploadTime: '', // Hidden per requirements
-    metadata, // Now includes ALL DynamoDB attributes properly mapped
-    userId: metadata.UserId || '',
+    metadata,
+    userId: item.UserId?.S || '',
   };
 };
