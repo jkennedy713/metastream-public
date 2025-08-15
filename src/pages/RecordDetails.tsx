@@ -124,25 +124,38 @@ const RecordDetails: React.FC = () => {
     const rows: Array<{ k: string; t: string; v: string }> = [];
     const meta = record.metadata || {};
 
-    // Base field
-    rows.push({ k: 'File Name', t: toTypeTag(record.filename), v: flattenValue(record.filename) });
-
-    // Display order: Key Phrases, Content, then type-specific fields
+    // Display ALL DynamoDB attributes in logical order
     const displayOrder = [
-      { key: 'KeyPhrases', label: 'Key Phrases' },
-      { key: 'Content', label: 'Content' },
-      { key: 'ContentLength', label: 'Content Length' },
-      { key: 'ColCount', label: 'Column Count' },
-      { key: 'RowCount', label: 'Row Count' },
+      'FileName',
+      'RecordID', 
+      'Type',
+      'KeyPhrases',
+      'Content',
+      'ContentLength',
+      'ContentTruncated',
+      'ColCount',
+      'RowCount',
+      // Add any other attributes that exist
+      ...Object.keys(meta).filter(key => ![
+        'FileName', 'RecordID', 'Type', 'KeyPhrases', 'Content', 
+        'ContentLength', 'ContentTruncated', 'ColCount', 'RowCount'
+      ].includes(key))
     ];
 
-    displayOrder.forEach(({ key, label }) => {
+    displayOrder.forEach((key) => {
       if (meta[key] !== undefined && meta[key] !== null) {
         let value = meta[key];
+        let label = key;
         
-        // Special handling for KeyPhrases - display as comma-separated text
-        if (key === 'KeyPhrases' && Array.isArray(value)) {
-          value = value.join(', ');
+        // Clean up labels for better display
+        switch (key) {
+          case 'FileName': label = 'File Name'; break;
+          case 'RecordID': label = 'Record ID'; break;
+          case 'KeyPhrases': label = 'Key Phrases'; break;
+          case 'ContentLength': label = 'Content Length'; break;
+          case 'ContentTruncated': label = 'Content Truncated'; break;
+          case 'ColCount': label = 'Column Count'; break;
+          case 'RowCount': label = 'Row Count'; break;
         }
         
         rows.push({ k: label, t: toTypeTag(value), v: flattenValue(value) });
@@ -178,10 +191,18 @@ const RecordDetails: React.FC = () => {
             <div>
               <h3 className="text-sm font-medium mb-2">Key Phrases</h3>
               <div className="flex flex-wrap gap-2">
-                {record?.metadata?.KeyPhrases && Array.isArray(record.metadata.KeyPhrases) ? (
-                  record.metadata.KeyPhrases.map((phrase: string) => (
-                    <Badge key={phrase} variant="secondary">{phrase}</Badge>
-                  ))
+                {record?.metadata?.KeyPhrases ? (
+                  typeof record.metadata.KeyPhrases === 'string' ? (
+                    record.metadata.KeyPhrases.split(',').map((phrase: string) => (
+                      <Badge key={phrase.trim()} variant="secondary">{phrase.trim()}</Badge>
+                    ))
+                  ) : Array.isArray(record.metadata.KeyPhrases) ? (
+                    record.metadata.KeyPhrases.map((phrase: string) => (
+                      <Badge key={phrase} variant="secondary">{phrase}</Badge>
+                    ))
+                  ) : (
+                    <Badge variant="secondary">{String(record.metadata.KeyPhrases)}</Badge>
+                  )
                 ) : (
                   <span className="text-muted-foreground text-sm">No key phrases available</span>
                 )}
