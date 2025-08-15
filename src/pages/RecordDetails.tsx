@@ -16,19 +16,25 @@ const RecordDetails: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    console.log('RecordDetails component mounted');
+    console.log('params.id:', params.id);
     const load = async () => {
       if (params.id) {
+        console.log('Starting to load record for id:', params.id);
         setLoading(true);
         try {
+          console.log('About to call queryMetadataById...');
           const r = await queryMetadataById(params.id);
-          console.log('Loaded record:', r);
+          console.log('queryMetadataById returned:', r);
           setRecord(r);
         } catch (e: any) {
-          console.error('Failed to load record:', e);
+          console.error('Error in load function:', e);
           toast({ title: 'Error', description: e?.message || 'Failed to load record', variant: 'destructive' });
         } finally {
           setLoading(false);
         }
+      } else {
+        console.log('No params.id found');
       }
     };
     load();
