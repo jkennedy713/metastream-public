@@ -135,12 +135,12 @@ const MetadataTable: React.FC = () => {
   };
 
   const handleView = (record: MetadataRecord) => {
-    const id = (record.id || '').trim();
-    if (!id) {
-      toast({ title: 'Cannot open', description: 'Record is missing an ID', variant: 'destructive' });
+    const fileName = record.fileName || record.filename || '';
+    if (!fileName) {
+      toast({ title: 'Cannot open', description: 'Record is missing a filename', variant: 'destructive' });
       return;
     }
-    navigate(`/record/${encodeURIComponent(id)}`, { state: { record } });
+    navigate(`/record/${encodeURIComponent(fileName)}`);
   };
 
 
