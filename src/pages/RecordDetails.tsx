@@ -124,19 +124,19 @@ const RecordDetails: React.FC = () => {
     const rows: Array<{ k: string; v: string }> = [];
     const meta = record.metadata || {};
 
-    // Always show these rows in this exact order
+    // Always show these rows in this exact order with display labels
     const displayOrder = [
-      'FileName',
-      'KeyPhrases',
-      'Content',
-      'FileName',
-      'RecordID',
-      'ColCount',
-      'RowCount',
-      'ContentLength',
+      { key: 'FileName', label: 'File Name' },
+      { key: 'KeyPhrases', label: 'Key Phrases' },
+      { key: 'Content', label: 'Content' },
+      { key: 'FileName', label: 'File Name' },
+      { key: 'RecordID', label: 'RecordID' },
+      { key: 'ColCount', label: 'Column Content' },
+      { key: 'RowCount', label: 'Row Count' },
+      { key: 'ContentLength', label: 'Content Length' },
     ];
 
-    displayOrder.forEach((key) => {
+    displayOrder.forEach(({ key, label }) => {
       let displayValue = '';
       
       if (key === 'FileName') {
@@ -155,7 +155,7 @@ const RecordDetails: React.FC = () => {
         displayValue = flattenValue(meta[key] || '');
       }
       
-      rows.push({ k: key, v: displayValue });
+      rows.push({ k: label, v: displayValue });
     });
 
     return rows;
