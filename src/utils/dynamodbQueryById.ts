@@ -91,11 +91,16 @@ const mapDynamoItem = (item: any): MetadataRecord => {
     }
   });
 
-  return {
+  console.log('Processed metadata:', metadata);
+  
+  const result = {
     id: item.RecordID?.S || item.FileName?.S || '',
     filename: item.FileName?.S || '',
     uploadTime: '', // Hidden per requirements
     metadata,
     userId: item.UserId?.S || '',
   };
+  
+  console.log('Final mapped record:', result);
+  return result;
 };

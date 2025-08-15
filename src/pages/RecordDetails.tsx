@@ -121,6 +121,8 @@ const RecordDetails: React.FC = () => {
 
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
+    console.log('RecordDetails - record:', record);
+    console.log('RecordDetails - record.metadata:', record.metadata);
     const rows: Array<{ k: string; t: string; v: string }> = [];
     const meta = record.metadata || {};
 
