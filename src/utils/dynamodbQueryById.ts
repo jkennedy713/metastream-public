@@ -11,7 +11,9 @@ export interface MetadataRecord {
 }
 
 export const queryMetadataById = async (id: string): Promise<MetadataRecord | null> => {
+  console.log('queryMetadataById called with id:', id);
   const awsConfig = getAWSConfig();
+  console.log('AWS config:', awsConfig);
   const session = await fetchAuthSession();
   const credentials = session.credentials;
   if (!credentials) throw new Error('Not authenticated');
@@ -27,9 +29,11 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
 
   // Decode filename from route parameter
   const fileName = decodeURIComponent(id);
+  console.log('Decoded fileName:', fileName);
   
   // Try GetItem first with FileName and RecordID
   const recordId = `${fileName}#full`;
+  console.log('Trying GetItem with recordId:', recordId);
   const getItemCmd = new GetItemCommand({
     TableName: awsConfig.dynamoTableName,
     Key: {
@@ -40,11 +44,14 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
 
   try {
     const getItemRes = await dynamoClient.send(getItemCmd);
+    console.log('GetItem response:', getItemRes);
     if (getItemRes.Item) {
       const item = getItemRes.Item;
+      console.log('Found item with GetItem:', item);
       const mapped = mapDynamoItem(item);
       return mapped;
     }
+    console.log('No item found with GetItem, trying Query...');
   } catch (e) {
     console.warn('GetItem failed, falling back to Query:', e);
   }
@@ -60,9 +67,14 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
   });
 
   const queryRes = await dynamoClient.send(queryCmd);
+  console.log('Query response:', queryRes);
   const item = (queryRes.Items || [])[0];
-  if (!item) return null;
+  if (!item) {
+    console.log('No item found with Query either');
+    return null;
+  }
 
+  console.log('Found item with Query:', item);
   return mapDynamoItem(item);
 };
 
