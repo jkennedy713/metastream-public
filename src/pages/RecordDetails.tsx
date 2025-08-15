@@ -14,7 +14,6 @@ import { detectKeyPhrases } from '@/utils/comprehend';
 interface MetadataRecord {
   id: string;
   filename: string;
-  uploadTime: string;
   metadata: Record<string, any>;
   userId: string;
 }
@@ -176,27 +175,63 @@ const RecordDetails: React.FC = () => {
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; t: string; v: string }>;
     const rows: Array<{ k: string; t: string; v: string }> = [];
+    const meta = record.metadata || {};
 
-    // Only keep essential base fields
-    const baseFields: Array<[string, any]> = [
-      ['File Name', record.filename],
-      ['Upload Time', record.uploadTime],
-    ];
-    baseFields.forEach(([k, val]) => rows.push({ k, t: toTypeTag(val), v: flattenValue(val) }));
+    // Get file type from metadata
+    const fileType = (meta.Type || meta.type || '').toLowerCase();
 
-    // Label mapping for select metadata keys
-    const labelFor = (key: string): string => {
-      const c = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (c === 'extension') return 'File Type';
-      if (c === 'sizemb') return 'Size';
-      if (c === 'approxlinecount') return 'Line Count';
-      return key;
+    // Base field
+    rows.push({ k: 'File Name', t: toTypeTag(record.filename), v: flattenValue(record.filename) });
+
+    // File type specific attribute order and labeling
+    const getAttributeOrder = (type: string): Array<{ key: string; label: string }> => {
+      const orders = {
+        tsv: [
+          { key: 'Content', label: 'Content' },
+          { key: 'ColCount', label: 'Column Count' },
+          { key: 'ContentLength', label: 'Content Length' },
+          { key: 'RowCount', label: 'Row Count' }
+        ],
+        json: [
+          { key: 'KeyPhrases', label: 'Key Phrases' },
+          { key: 'Content', label: 'Content' },
+          { key: 'ContentLength', label: 'Content Length' }
+        ],
+        csv: [
+          { key: 'KeyPhrases', label: 'Key Phrases' },
+          { key: 'Content', label: 'Content' },
+          { key: 'ColCount', label: 'Column Count' },
+          { key: 'ContentLength', label: 'Content Length' },
+          { key: 'RowCount', label: 'Row Count' }
+        ],
+        txt: [
+          { key: 'KeyPhrases', label: 'Key Phrases' },
+          { key: 'Content', label: 'Content' },
+          { key: 'ContentLength', label: 'Content Length' }
+        ],
+        xlsx: [
+          { key: 'KeyPhrases', label: 'Key Phrases' },
+          { key: 'Content', label: 'Content' },
+          { key: 'ColCount', label: 'Column Count' },
+          { key: 'ContentLength', label: 'Content Length' },
+          { key: 'RowCount', label: 'Row Count' }
+        ]
+      };
+      return orders[type] || [];
     };
 
-    // Add filtered metadata entries
-    Object.entries(record.metadata || {}).forEach(([k, val]) => {
-      if (!isHiddenMetaKey(k)) {
-        rows.push({ k: labelFor(k), t: toTypeTag(val), v: flattenValue(val) });
+    // Add attributes in the specified order for this file type
+    const attributeOrder = getAttributeOrder(fileType);
+    attributeOrder.forEach(({ key, label }) => {
+      if (meta[key] !== undefined && meta[key] !== null) {
+        let value = meta[key];
+        
+        // Special handling for KeyPhrases - display as comma-separated text
+        if (key === 'KeyPhrases' && Array.isArray(value)) {
+          value = value.join(', ');
+        }
+        
+        rows.push({ k: label, t: toTypeTag(value), v: flattenValue(value) });
       }
     });
 
@@ -279,9 +314,15 @@ const RecordDetails: React.FC = () => {
                       <TableRow key={row.k}>
                         <TableCell className="font-medium">{row.k}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">{row.t}</TableCell>
-                        <TableCell>
-                          <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
-                        </TableCell>
+                         <TableCell>
+                           {row.k === 'Content' ? (
+                             <div className="max-h-32 overflow-auto">
+                               <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
+                             </div>
+                           ) : (
+                             <pre className="whitespace-pre-wrap break-words text-sm">{row.v}</pre>
+                           )}
+                         </TableCell>
                       </TableRow>
                     ))
                   ) : (

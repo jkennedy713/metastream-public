@@ -28,7 +28,7 @@ const recordDedupeKey = (r: MetadataRecord): string => {
   const filename = normalizeName(r.filename);
   const metaKey = normalizeName((r as any)?.metadata?.s3Key || (r as any)?.metadata?.key || '');
   const base = id || metaKey || filename;
-  return `${base}::${(r.uploadTime || '').trim()}`;
+  return `${base}::${r.RecordID || r.id || ''}`;
 };
 
 const MetadataTable: React.FC = () => {
@@ -55,20 +55,18 @@ const MetadataTable: React.FC = () => {
         reset ? undefined : lastEvaluatedKey
       );
       
-      // Sort by newest uploadTime first
-      const sortByLatest = (arr: MetadataRecord[]) =>
-        [...arr].sort(
-          (a, b) => new Date(b.uploadTime).getTime() - new Date(a.uploadTime).getTime()
-        );
+      // Sort by filename alphabetically
+      const sortByFilename = (arr: MetadataRecord[]) =>
+        [...arr].sort((a, b) => a.filename.localeCompare(b.filename));
 
       if (reset) {
         const deduped = Array.from(
           new Map(result.items.map(r => [recordDedupeKey(r), r])).values()
         );
-        setAllRecords(sortByLatest(deduped));
+        setAllRecords(sortByFilename(deduped));
       } else {
         setAllRecords(prev =>
-          sortByLatest(
+          sortByFilename(
             Array.from(
               new Map(
                 [...prev, ...result.items].map(r => [recordDedupeKey(r), r])
@@ -147,13 +145,6 @@ const MetadataTable: React.FC = () => {
     navigate(`/record/${encodeURIComponent(id)}`, { state: { record } });
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
 
   const renderMetadataPreview = (metadata: Record<string, any>) => {
     const ext = String((metadata?.extension ?? '') || '').trim();
@@ -229,19 +220,15 @@ const MetadataTable: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>File Name</TableHead>
-                  <TableHead>Upload Time</TableHead>
                   <TableHead>Preview</TableHead>
                   <TableHead className="w-[220px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {records.map((record) => (
-                  <TableRow key={record.id || `${record.filename}-${record.uploadTime}`}>
+                  <TableRow key={record.id || `${record.filename}-${record.RecordID}`}>
                     <TableCell className="font-medium">
                       {record.filename}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(record.uploadTime)}
                     </TableCell>
                     <TableCell>
                       {renderMetadataPreview(record.metadata)}
