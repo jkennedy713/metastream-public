@@ -68,6 +68,7 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
 
 const mapDynamoItem = (item: any): MetadataRecord => {
   // Extract all DynamoDB attributes directly
+  console.log('Raw DynamoDB item:', JSON.stringify(item, null, 2));
   const metadata: Record<string, any> = {};
   
   // Map DynamoDB types to JavaScript values
