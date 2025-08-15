@@ -73,20 +73,21 @@ const mapDynamoItem = (item: any): MetadataRecord => {
   
   // Map DynamoDB types to JavaScript values
   Object.entries(item).forEach(([key, value]: [string, any]) => {
-    if (key === 'FileName' || key === 'RecordID' || key === 'UserId') return; // Skip primary keys
-    
-    if (value.S !== undefined) {
-      metadata[key] = value.S;
-    } else if (value.N !== undefined) {
-      metadata[key] = Number(value.N);
-    } else if (value.L !== undefined) {
-      metadata[key] = value.L.map((item: any) => item.S || item.N || item);
-    } else if (value.M !== undefined) {
-      metadata[key] = Object.fromEntries(
-        Object.entries(value.M).map(([k, v]: [string, any]) => [k, v.S || v.N || v])
-      );
-    } else if (value.BOOL !== undefined) {
-      metadata[key] = value.BOOL;
+    // Skip primary keys but continue processing other attributes
+    if (key !== 'FileName' && key !== 'RecordID' && key !== 'UserId') {
+      if (value.S !== undefined) {
+        metadata[key] = value.S;
+      } else if (value.N !== undefined) {
+        metadata[key] = Number(value.N);
+      } else if (value.L !== undefined) {
+        metadata[key] = value.L.map((item: any) => item.S || item.N || item);
+      } else if (value.M !== undefined) {
+        metadata[key] = Object.fromEntries(
+          Object.entries(value.M).map(([k, v]: [string, any]) => [k, v.S || v.N || v])
+        );
+      } else if (value.BOOL !== undefined) {
+        metadata[key] = value.BOOL;
+      }
     }
   });
 
