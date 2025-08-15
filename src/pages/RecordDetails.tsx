@@ -124,8 +124,9 @@ const RecordDetails: React.FC = () => {
     const rows: Array<{ k: string; v: string }> = [];
     const meta = record.metadata || {};
 
-    // Show only these 5 attributes
+    // Show only these 6 attributes
     const displayOrder = [
+      { key: 'FileName', label: 'File Name' },
       { key: 'KeyPhrases', label: 'Key Phrases' },
       { key: 'Content', label: 'Content' },
       { key: 'ColCount', label: 'Column Content' },
