@@ -28,8 +28,8 @@ const Dashboard: React.FC = () => {
                 View and analyze metadata from your uploaded datasets
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleHardRefresh} variant="outline" size="sm">
+            <div className="flex gap-3">
+              <Button onClick={handleHardRefresh} variant="destructive">
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Hard Refresh
               </Button>
