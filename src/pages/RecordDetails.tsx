@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadataById } from '@/utils/dynamodbQueryById';
+import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
 import { ArrowLeft } from 'lucide-react';
 
 interface MetadataRecord {
@@ -122,36 +123,27 @@ const RecordDetails: React.FC = () => {
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; v: string }>;
     const rows: Array<{ k: string; v: string }> = [];
-    const meta = record.metadata || {};
-
-    // Show only these 6 attributes
-    const displayOrder = [
-      { key: 'FileName', label: 'File Name' },
-      { key: 'KeyPhrases', label: 'Key Phrases' },
-      { key: 'Content', label: 'Content' },
-      { key: 'ColCount', label: 'Column Content' },
-      { key: 'RowCount', label: 'Row Count' },
-      { key: 'ContentLength', label: 'Content Length' },
-    ];
-
-    displayOrder.forEach(({ key, label }) => {
+    
+    // Add filename as first row
+    rows.push({ k: 'File Name', v: record.filename || '' });
+    
+    // Get filtered metadata (excludes technical fields like id, s3key, etc.)
+    const filteredMeta = filterMetadataForDisplay(record.metadata || {});
+    
+    // Convert all metadata entries to display format
+    Object.entries(filteredMeta).forEach(([key, value]) => {
       let displayValue = '';
       
-      if (key === 'FileName') {
-        displayValue = flattenValue(record.filename || '');
-      } else if (key === 'ColCount' || key === 'RowCount') {
-        displayValue = meta[key] !== undefined && meta[key] !== null ? flattenValue(meta[key]) : 'N/A';
-      } else if (key === 'KeyPhrases') {
-        if (meta[key] && Array.isArray(meta[key])) {
-          displayValue = meta[key].join(', ');
-        } else {
-          displayValue = flattenValue(meta[key] || '');
-        }
+      if (Array.isArray(value)) {
+        displayValue = value.join(', ');
       } else {
-        displayValue = flattenValue(meta[key] || '');
+        displayValue = flattenValue(value);
       }
       
-      rows.push({ k: label, v: displayValue });
+      // Format key names to be more readable
+      const formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+      
+      rows.push({ k: formattedKey, v: displayValue });
     });
 
     return rows;
