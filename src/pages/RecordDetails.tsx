@@ -123,27 +123,39 @@ const RecordDetails: React.FC = () => {
   const metaEntries = useMemo(() => {
     if (!record) return [] as Array<{ k: string; v: string }>;
     const rows: Array<{ k: string; v: string }> = [];
+    const meta = record.metadata || {};
     
-    // Add filename as first row
-    rows.push({ k: 'File Name', v: record.filename || '' });
-    
-    // Get filtered metadata (excludes technical fields like id, s3key, etc.)
-    const filteredMeta = filterMetadataForDisplay(record.metadata || {});
-    
-    // Convert all metadata entries to display format
-    Object.entries(filteredMeta).forEach(([key, value]) => {
+    // Show the specific attributes from your data structure
+    const displayOrder = [
+      { key: 'FileName', label: 'File Name' },
+      { key: 'RecordID', label: 'Record ID' },
+      { key: 'Content', label: 'Content' },
+      { key: 'ContentLength', label: 'Content Length' },
+      { key: 'KeyPhrases', label: 'Key Phrases' },
+      { key: 'Type', label: 'Type' },
+      { key: 'RowCount', label: 'Row Count' },
+      { key: 'ColCount', label: 'Column Count' },
+      { key: 'ParseError', label: 'Parse Error' },
+    ];
+
+    displayOrder.forEach(({ key, label }) => {
       let displayValue = '';
       
-      if (Array.isArray(value)) {
-        displayValue = value.join(', ');
+      if (key === 'FileName') {
+        displayValue = record.filename || '';
+      } else if (key === 'KeyPhrases') {
+        if (Array.isArray(meta[key])) {
+          displayValue = meta[key].join(', ');
+        } else {
+          displayValue = String(meta[key] || '');
+        }
+      } else if (key === 'ParseError') {
+        displayValue = meta[key] ? 'Yes' : 'No';
       } else {
-        displayValue = flattenValue(value);
+        displayValue = flattenValue(meta[key]);
       }
       
-      // Format key names to be more readable
-      const formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
-      
-      rows.push({ k: formattedKey, v: displayValue });
+      rows.push({ k: label, v: displayValue });
     });
 
     return rows;
