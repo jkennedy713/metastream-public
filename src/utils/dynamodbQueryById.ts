@@ -25,11 +25,12 @@ export const queryMetadataById = async (id: string): Promise<MetadataRecord | nu
     },
   });
 
-  // Decode filename from route parameter
-  const fileName = decodeURIComponent(id);
+  // Decode the full record ID from route parameter
+  const fullRecordId = decodeURIComponent(id);
   
-  // Try GetItem first with FileName and RecordID
-  const recordId = `${fileName}#full`;
+  // Split to get filename and record ID parts
+  const fileName = fullRecordId.includes('#') ? fullRecordId.split('#')[0] : fullRecordId;
+  const recordId = fullRecordId;
   const getItemCmd = new GetItemCommand({
     TableName: awsConfig.dynamoTableName,
     Key: {

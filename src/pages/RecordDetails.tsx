@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryMetadataById } from '@/utils/dynamodbQueryById';
-import { filterMetadataForDisplay } from '@/utils/metadataDisplay';
 import { ArrowLeft } from 'lucide-react';
 
 interface MetadataRecord {
