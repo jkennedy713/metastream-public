@@ -2,11 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MetadataTable from '@/components/MetadataTable';
-import { Upload, RotateCcw } from 'lucide-react';
+import { Upload, RotateCcw, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { clearAllDynamoDBRecords } from '@/utils/dynamodbCleaner';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const handleHardRefresh = () => {
     // Clear all React Query cache
@@ -15,6 +18,24 @@ const Dashboard: React.FC = () => {
     localStorage.clear();
     // Force page reload to reset everything
     window.location.reload();
+  };
+
+  const handleClearAllRecords = async () => {
+    try {
+      const result = await clearAllDynamoDBRecords();
+      toast({
+        title: 'Records Cleared',
+        description: `Successfully deleted ${result.deletedCount} records from DynamoDB`,
+      });
+      // Refresh the page to show empty state
+      handleHardRefresh();
+    } catch (error) {
+      toast({
+        title: 'Clear Failed',
+        description: error instanceof Error ? error.message : 'Failed to clear records',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -29,7 +50,11 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-3">
-              <Button onClick={handleHardRefresh} variant="destructive">
+              <Button onClick={handleClearAllRecords} variant="destructive" size="sm">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear All Records
+              </Button>
+              <Button onClick={handleHardRefresh} variant="outline" size="sm">
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Hard Refresh
               </Button>
